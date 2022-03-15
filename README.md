@@ -1,4 +1,5 @@
 # auction-api
+
 Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud
 
 ## Development plan
@@ -45,3 +46,5 @@ This should bring up the application on localhost:3000. If you change the code a
 As we're using Express >4.16, we can use the built-in `.json()` method, and have no need of the `bodyparser` package.
 
 Because we're using MongoDB via docker-compose for local running, we don't need auth. This does not obviate the need for auth in cloud environments, but we can look at alternative methods that are more secret-preserving than dotenv.
+
+The noun for each 'item' is 'auction', as that seemed more expressive, and also means we can place multiple items in one auction at a later point, if we so choose.
