@@ -4,7 +4,6 @@
   "description": "Auction API for Cloud Computing coursework project",
   "main": "server.js",
   "scripts": {
-    "start-dev": "nodemon -L",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -21,8 +20,5 @@
     "eslint": "^8.11.0",
     "express": "^4.17.3",
     "mongoose": "^6.2.6"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.15"
   }
 }

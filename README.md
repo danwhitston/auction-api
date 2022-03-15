@@ -48,3 +48,5 @@ As we're using Express >4.16, we can use the built-in `.json()` method, and have
 Because we're using MongoDB via docker-compose for local running, we don't need auth. This does not obviate the need for auth in cloud environments, but we can look at alternative methods that are more secret-preserving than dotenv.
 
 The noun for each 'item' is 'auction', as that seemed more expressive, and also means we can place multiple items in one auction at a later point, if we so choose.
+
+I couldn't get nodemon working within a Docker container, despite apparently-working examples, so I stripped it out and manually rebuilt the app to test changes.
