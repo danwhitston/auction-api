@@ -1,0 +1,22 @@
+{
+  "name": "auction-api",
+  "version": "1.0.0",
+  "description": "Auction API for Cloud Computing coursework project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danwhitston/auction-api.git"
+  },
+  "author": "Daniel Whitston",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/danwhitston/auction-api/issues"
+  },
+  "homepage": "https://github.com/danwhitston/auction-api#readme",
+  "dependencies": {
+    "express": "^4.17.3"
+  }
+}
