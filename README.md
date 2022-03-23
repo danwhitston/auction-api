@@ -39,15 +39,54 @@ cd auction-api
 docker-compose up
 ```
 
-This should bring up the application on <http://localhost:3000>. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances.
+This should bring up the application on <http://localhost:3000>. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances. To reset the Mongo database, delete the relevant container.
 
-## Some technical notes
+## Current REST endpoints
+
+### `/` GET
+
+The root route. Returns a simple server status response to confirm it's up and running. No auth is required.
+
+### `/users/register` POST
+
+Create a new user. Does not require an auth-token. The JSON payload takes the form:
+
+```json
+{
+    "username":"daniel",
+    "email":"test@example.com",
+    "password":"somePassword"
+}
+```
+
+### `/users/login` POST
+
+Log in as a user. The JSON payload takes the form:
+
+```json
+{
+    "email":"test@example.com",
+    "password":"somePassword"
+}
+```
+
+Returns an error if anything goes wrong, otherwise returns an auth-token as payload if the username and password match one that's stored:
+
+```json
+{
+    "auth-token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MjNiMTI1ZjJmODAyMjY4YzlmODE5NGQiLCJpYXQiOjE2NDgwMzkwNjl9.xbfmL60wI0nTBmqkSZ97uxvCm3REjZ9LoU8Ljrnxl4k"
+}
+```
+
+## Development notes
+
+The solution structure and code is based on that given in the first four labs of the Cloud Computing course. I've also based code on examples from other sources where appropriate, and marked it as such in each case.
 
 As we're using Express >4.16, we can use the built-in `.json()` method, and have no need of the `bodyparser` package.
 
-Because we're using MongoDB via docker-compose for local running, we don't need auth. This does not obviate the need for auth in cloud environments, but we can look at alternative methods that are more secret-preserving than dotenv.
+Because we're using MongoDB via docker-compose for local running, we don't need auth. This does not obviate the need for auth in cloud environments, but we can solve that later.
 
-The noun for each 'item' is 'auction', as that seemed more expressive, and also means we can extract items from out of auctions later, if we so choose.
+The specification requires both `auctions` and `items` to be stored and made available. Given that each auction has one and only one item associated, this is an odd requirement.
 
 I couldn't get nodemon working within a Docker container, despite apparently-working examples, so I stripped it out. Testing changes requires a manual rebuild each time.
 

@@ -57,20 +57,22 @@ userSchema.pre("save", function (next) {
   });
 });
 
-userSchema.methods.comparePassword = function (candidatePassword, cb) {
-  bcrypt.compare(candidatePassword, this.password, function (err, isMatch) {
-    if (err) return cb(err);
-    cb(null, isMatch);
-  });
-};
-
 // Validation function uses Joi to assess validity of data prior to attempting
 // commit, e.g. saving of a document
 // Based on https://gist.github.com/stongo/6359042?permalink_comment_id=3476052#gistcomment-3476052
-const validateUser = (user) => {
+// Confirmed: the string requirement on these prevents query injection attacks!
+const validateUserWrite = (user) => {
   const schema = Joi.object({
     username: Joi.string().min(3).max(256).required(),
     email: Joi.string().email().min(3).max(256).required(),
+    password: Joi.string().min(8).max(1024).required(),
+  });
+  return schema.validate(user);
+};
+
+const validateUserLogin = (user) => {
+  const schema = Joi.object({
+    email: Joi.string().min(3).max(256).required(),
     password: Joi.string().min(8).max(1024).required(),
   });
   return schema.validate(user);
@@ -80,5 +82,6 @@ const User = mongoose.model("user", userSchema);
 
 module.exports = {
   User,
-  validateUser,
+  validateUserWrite,
+  validateUserLogin,
 };
