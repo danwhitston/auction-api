@@ -24,11 +24,10 @@ const itemSchema = mongoose.Schema({
     type: String,
     max: [32768, "Description length is max 32768 characters"],
   },
-  // auctionId: {
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   require: true,
-  //   default: ???
-  // },
+  auctionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    require: true,
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     require: true,
@@ -42,6 +41,7 @@ const validateItem = (item) => {
       .valid(...Object.values(conditionOptions))
       .required(),
     description: Joi.string().max(32768).required(),
+    closingTime: Joi.date().greater('now'),
   });
   return schema.validate(item);
 };

@@ -13,8 +13,8 @@ Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud
 - [x] Add basic registration and login routes
 - [x] Add auth storage to MongoDB and model setup
 - [x] Complete and manually test the registration and login actions
-- [ ] Add an auth-checking hook for use by all actions
-- [ ] Add an auction / item creation route (or routes?)
+- [x] Add an auth-checking hook for use by all actions
+- [x] Add an auction / item creation route (or routes?)
 - [ ] Add a route to view current auctions / items
 
 ## Setting up a development environment
@@ -44,7 +44,7 @@ docker-compose up
 
 This should bring up the application on <http://localhost:3000>. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances. To reset the Mongo database, delete the relevant container.
 
-## Current REST endpoints
+## REST endpoints
 
 ### `/` GET
 
@@ -89,13 +89,34 @@ Create a new item. This also creates an associated auction object to store bids 
 {
     "title": "A lovely teapot",
     "condition": "used",
-    "description": "This teapot is truly lovely. I would attach a photograph but, alas, that would require whatever the GCP equivalent of S3 is and a bunch of messing around to get working on local"
+    "description": "This teapot is truly lovely. I would attach a photograph but, alas, that would require whatever the GCP equivalent of S3 is and a bunch of messing around to get working on local",
+    "closingTime": "2022-07-14T12:26:34Z",
 }
 ```
 
+In the above, the closingTime is actually part of the auction information and gets stored there, rather than in the item.
+
 ### `/items` GET
 
-List all items. There is currently no ordering and no filtering on this list. The request has to include a valid `auth-token` header.
+List all items that have been submitted for auction. There is currently no ordering and no filtering on this list. The request has to include a valid `auth-token` header.
+
+### `/auctions` GET
+
+Returns a list of all auctions, including bids made for each auction. The request has to include a valid `auth-token` header.
+
+### `/auctions/:id` GET
+
+Returns details of a single auction, identified by the ID included as part of the URL. The request has to include a valid `auth-token` header.
+
+### `/auctions/:id/bids` POST
+
+Submit a bid for an item in a currently running auction. The request has to include a valid `auth-token` header, which identifies the user submitting the bid. If the auction is open then a confirmation response is sent with details of the bid. If the auction is closed or the bid cannot be recorded for some other reason, an error response is returned. Note that a successful bid submission does not imply that the bid is the highest amount to be submitted. The auction ID is included in the URL, and the amount is the only argument in the payload. The amount cannot be less than 0 or more than 100000000.
+
+```json
+{
+    "amount": 2300, // The amount being bid, in currency units
+}
+```
 
 ## Development notes
 
@@ -117,4 +138,7 @@ I've moved Joi validation code inside the model and created middleware that vali
 
 I've also moved some domain logic inside the model with a pre-save hook, to tie password hashing directly into the model and make it harder to mess up security.
 
-I chose to use references between collections rather than embedding. There was no performance benefit to denormalising at this level of usage, and there was a stated requirement to keep separate collections, so it was easier to use references.
+I chose to use references between items and auctions, rather than embedding one inside the other. There was no performance benefit to denormalising at this level of usage, and there was a stated requirement to keep separate collections. However, I am embedding bids as an array inside each auction.
+
+Items and Auctions have their respective references to each other as required fields. This means that every item should have an auction and vice versa. There is no enforcement of reference consistency between the two collections, so it's theoretically possible to create inconsistent documents that don't reference each other, many-to-one or one-to-many connections, or documents that reference a document of completely the wrong type. To limit the potential for mischief, these references are calculated by the program, and cannot be defined by end users.
+
