@@ -15,7 +15,11 @@ Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud
 - [x] Complete and manually test the registration and login actions
 - [x] Add an auth-checking hook for use by all actions
 - [x] Add an auction / item creation route (or routes?)
-- [ ] Add a route to view current auctions / items
+- [x] Add a route to view current auctions / items
+- [x] Submit bids on an auction
+- [ ] Users cannot bid for their own items
+- [ ] Users cannot bid in an auction after the closing date
+- [ ] Update auction open/closed status when it passes closingTime
 
 ## Setting up a development environment
 
@@ -138,7 +142,8 @@ I've moved Joi validation code inside the model and created middleware that vali
 
 I've also moved some domain logic inside the model with a pre-save hook, to tie password hashing directly into the model and make it harder to mess up security.
 
-I chose to use references between items and auctions, rather than embedding one inside the other. There was no performance benefit to denormalising at this level of usage, and there was a stated requirement to keep separate collections. However, I am embedding bids as an array inside each auction.
+I chose to use references between items and auctions, rather than embedding one inside the other. There was no performance benefit to denormalising at this level of usage, and there was a stated requirement to create both auctions and items. However, I am embedding bids as an array inside each auction, as those aren't specified as a distinct requirement.
 
 Items and Auctions have their respective references to each other as required fields. This means that every item should have an auction and vice versa. There is no enforcement of reference consistency between the two collections, so it's theoretically possible to create inconsistent documents that don't reference each other, many-to-one or one-to-many connections, or documents that reference a document of completely the wrong type. To limit the potential for mischief, these references are calculated by the program, and cannot be defined by end users.
 
+I'm using the MongoDB internal ID as the public ID of documents. Ideally, we would use a public-facing ID for external consumption, but it's not a major issue either way.

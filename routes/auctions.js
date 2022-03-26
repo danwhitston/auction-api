@@ -24,35 +24,11 @@ router.get("/:id", [authMiddleWare()], async (req, res) => {
   }
 });
 
-// We create Auction records in response to an Item POST request.
-// So this action is not useful to us at present.
-// router.post(
-//   "/",
-//   [authMiddleWare(), validateMiddleWare(validateAuction)],
-//   async (req, res) => {
-//     const auction = new Auction({
-//         itemId: req.body.itemId,
-//         auctionStatus: req.body.auctionStatus,
-//         closingTime: req.body.closingTime,
-//         bids: [],
-//     });
-//     // console.log(auction);
-//     try {
-//       const savedAuction = await auction.save();
-//       res.send(savedAuction);
-//     } catch (err) {
-//       res.status(400).send({ message: err });
-//     }
-//   }
-// );
-
-router.post("/:id/bids", [authMiddleWare()], async (req, res) => {
+router.post("/:id/bids", [authMiddleWare(), validateMiddleWare(validateBid)], async (req, res) => {
   const auctionId = req.params.id; // guaranteed to be string, apparently
   // Need to account for logic around closingTime and auctionStatus
   // and winnerId. Future development: withdraw bids.
-  console.log(auctionId);
-  const auction = Auction.findById(auctionId);
-  console.log(auction.bids);
+  const auction = await Auction.findById(auctionId);
   const bid = new Bid({
     userId: req.user._id,
     amount: req.body.amount,
