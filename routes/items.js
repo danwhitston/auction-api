@@ -32,7 +32,6 @@ router.post(
       closingTime: req.body.closingTime,
     });
     item.auctionId = auction._id;
-    // console.log(item);
     try {
       // These are two separate transactions. Thus, it's possible to correctly
       // save the item and then fail on saving the auction, resulting in a

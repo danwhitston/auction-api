@@ -8,14 +8,16 @@ const port = 3000;
 app.use(express.json()); // Instead of bodyparser
 
 const rootRoute = require("./routes/root");
-const authRoute = require("./routes/auth");
+const usersRoute = require("./routes/users");
 const itemsRoute = require("./routes/items");
 const auctionsRoute = require("./routes/auctions");
+const bidsRoute = require("./routes/bids");
 
 app.use("/", rootRoute);
-app.use("/users", authRoute);
+app.use("/users", usersRoute);
 app.use("/items", itemsRoute);
 app.use("/auctions", auctionsRoute);
+app.use("/auctions/:id/bids", bidsRoute);
 
 mongoose.connect("mongodb://mongo:27017").catch((err) => {
   console.log(err);
