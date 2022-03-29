@@ -17,8 +17,8 @@ Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud
 - [x] Add an auction / item creation route (or routes?)
 - [x] Add a route to view current auctions / items
 - [x] Submit bids on an auction
-- [ ] Users cannot bid for their own items
-- [ ] Users cannot bid in an auction after the closing date
+- [x] Users cannot bid for their own items
+- [x] Users cannot bid in an auction after the closing date
 - [ ] Update auction open/closed status when it passes closingTime
 
 ## Setting up a development environment
@@ -147,3 +147,5 @@ I chose to use references between items and auctions, rather than embedding one 
 Items and Auctions have their respective references to each other as required fields. This means that every item should have an auction and vice versa. There is no enforcement of reference consistency between the two collections, so it's theoretically possible to create inconsistent documents that don't reference each other, many-to-one or one-to-many connections, or documents that reference a document of completely the wrong type. To limit the potential for mischief, these references are calculated by the program, and cannot be defined by end users.
 
 I'm using the MongoDB internal ID as the public ID of documents. Ideally, we would use a public-facing ID for external consumption, but it's not a major issue either way.
+
+I've marked many fields in Auction and Bid records as immutable. This is a safety measure to reduce the possibility of auctions or bids getting modified after-the-fact, which would invalidate auction results and damage trust. In a production setup, I would set up a custom MongoDB user with limited permissions on collections, such that it was impossible for the API app to remove or modify bid documents, that changes to item information did not overwrite previous edits, and that auctions could not be removed but instead only marked as cancelled.

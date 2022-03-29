@@ -1,5 +1,5 @@
 const { Item, validateItem } = require("../models/item");
-const { Auction, validateAuction } = require("../models/auction");
+const { Auction } = require("../models/auction");
 const express = require("express");
 const router = express.Router();
 const validateMiddleWare = require("../middleware/validate");
