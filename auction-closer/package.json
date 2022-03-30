@@ -1,0 +1,24 @@
+{
+  "name": "auction-closer",
+  "version": "1.0.0",
+  "description": "Close auctions stored in MongoDB and mark the winner, using a scheduled task",
+  "main": "close-auctions.js",
+  "scripts": {
+    "start": "node close-auctions.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danwhitston/auction-api.git"
+  },
+  "author": "Daniel Whitston",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/danwhitston/auction-api/issues"
+  },
+  "homepage": "https://github.com/danwhitston/auction-api#readme",
+  "dependencies": {
+    "eslint": "^8.12.0",
+    "mongoose": "^6.2.9"
+  }
+}

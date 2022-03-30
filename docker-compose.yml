@@ -9,6 +9,6 @@ services:
     restart: always
     ports:
       - "27017:27017"
-  # closer:
-  #   build: './auction-closer'
+  closer:
+    build: './auction-closer'
 
