@@ -21,7 +21,11 @@ Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud
 - [x] Users cannot bid in an auction after the closing date
 - [x] Set up three-app structure for API, API tester, auction closer
 - [x] Create cron container to close auctions and mark winners
-- [ ] Create Python testing app to query local instance
+- [x] Create Python testing app to query local instance
+- [ ] Write request handling code for test cases
+- [ ] Write test cases 1, 2, 3, 4
+- [ ] Write test cases 5, 6, 7, 8
+- [ ] Write test cases 9, 10, 11, 12, 13
 
 ## Setting up a development environment
 
@@ -33,6 +37,37 @@ docker-compose up
 ```
 
 This should bring up the API on <http://localhost:3000>, and a cron job in a separate container that closes off auctions and marks the winner once every minute. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances. To reset the Mongo database, delete the relevant container.
+
+## Running API tests
+
+You'll need a Python 3 installation on your machine, and both `pytest` and the `pytest-dependency` plugin:
+
+```sh
+cd auction-api/api-test-app
+pip install pytest
+pip install pytest-dependency # This ensures tests are run in order
+```
+
+Before running tests, bring up a (preferably blank) docker setup:
+
+```sh
+cd auction-api/
+docker-compose up --build
+cd api-test-app
+pytest # Run the tests!
+```
+
+The test objects are *not* deleted after a test run. This is because the API does not have delete functionality, and the test code does not create the environment. Therefore, subsequent test runs will fail due to duplicate data, until the dockerised MongoDB database is dropped or the `mongo` container in which it operates is deleted and rebuilt.
+
+## Application structure
+
+There are three applications, in three folders of the git repository:
+
+- `api-app` - the Node API
+- `auction-closer` - a Node script to close auctions, on a once-a-minute cron
+- `api-test-app` - Python test script, confirms correct working of api-app and auction-closer
+
+The API, the auction closer script, and the underlying MongoDB storage have a docker-compose config for local development and hosting. The API test app makes requests against this, and requires a clean MongoDB database.
 
 ## REST endpoints
 

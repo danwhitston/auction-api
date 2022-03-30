@@ -1,0 +1,7 @@
+{
+  "python.testing.pytestArgs": [
+    "api-test-app"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true
+}
