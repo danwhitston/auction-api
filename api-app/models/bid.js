@@ -25,7 +25,7 @@ bidSchema.post("save", function (next) {
   const bid = this;
   // Update the auction winnerId and winnerAmount if the new bid is greater
   // Assumption: a bid-save will not clash with the auction closer task
-  // Assumption: 
+  // Assumption: two bid-saves will not clash with each other
   const auction = bid.parent();
   if (auction.winnerAmount < bid.amount && auction.auctionStatus == "open") {
     auction.winnerAmount = bid.amount;

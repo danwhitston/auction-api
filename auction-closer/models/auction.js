@@ -39,10 +39,6 @@ const findOverdueAuctions = () => {
   }).exec();
 };
 
-auctionSchema.methods.winningBid = () => {
-  return this.bids.sort({ amount: -1, createdAt: 1 }).limit(1).exec();
-};
-
 const Auction = mongoose.model("auction", auctionSchema);
 
 module.exports = {

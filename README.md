@@ -135,7 +135,7 @@ Returns details of a single auction, identified by the ID included as part of th
 
 ### `/auctions/:id/bids` POST
 
-Submit a bid for an item in a currently running auction. The request has to include a valid `auth-token` header, which identifies the user submitting the bid. If the auction is open then a confirmation response is sent with details of the bid. If the auction is closed or the bid cannot be recorded for some other reason, an error response is returned. Note that a successful bid submission does not imply that the bid is the highest amount to be submitted. The auction ID is included in the URL, and the amount is the only argument in the payload. The amount cannot be less than 0 or more than 100000000.
+Submit a bid for an item in a currently running auction. The request has to include a valid `auth-token` header, which identifies the user submitting the bid. If the auction is open then a confirmation response is sent with details of the bid. If the auction is completed or the bid cannot be recorded for some other reason, an error response is returned. Note that a successful bid submission does not imply that the bid is the highest amount to be submitted. The auction ID is included in the URL, and the amount is the only argument in the payload. The amount cannot be less than 0 or more than 100000000.
 
 ```json
 {

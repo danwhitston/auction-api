@@ -1,5 +1,6 @@
 const { Item, validateItem } = require("../models/item");
 const { Auction } = require("../models/auction");
+const { Bid } = require("../models/bid");
 const express = require("express");
 const router = express.Router();
 const validateMiddleWare = require("../middleware/validate");
@@ -32,6 +33,12 @@ router.post(
       winnerId: req.user._id, // By default, the item owner wins on no-bid
       winnerAmount: 0,
       closingTime: req.body.closingTime,
+      bids: [
+        new Bid({
+          userId: req.user._id,
+          amount: 0,
+        })
+      ]
     });
     item.auctionId = auction._id;
     try {
