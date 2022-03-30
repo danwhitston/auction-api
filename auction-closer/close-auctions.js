@@ -12,15 +12,15 @@ mongoose.connect("mongodb://mongo:27017").catch((err) => {
 
 async function main() {
   var auctionsToClose;
-  
+
   try {
     auctionsToClose = await findOverdueAuctions();
   } catch (error) {
-    console.error("Mongo auctions to close query failed: "+error);
+    console.error("Mongo auctions to close query failed: " + error);
   }
-  
+
   for (const auction of auctionsToClose) {
-    console.log("Closing "+auction._id);
+    console.log("Closing " + auction._id);
     try {
       // Winner is the first submitted bid at the maximum bid amount
       auction.auctionStatus = "closed";

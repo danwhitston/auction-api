@@ -33,7 +33,10 @@ const auctionSchema = mongoose.Schema({
 });
 
 const findOverdueAuctions = () => {
-  return Auction.find({auctionStatus: "open", closingTime:{$lte: new Date()}}).exec();
+  return Auction.find({
+    auctionStatus: "open",
+    closingTime: { $lte: new Date() },
+  }).exec();
 };
 
 auctionSchema.methods.winningBid = () => {

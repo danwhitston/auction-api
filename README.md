@@ -25,36 +25,20 @@ Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud
 
 ## Setting up a development environment
 
-To run the application locally, you have two options:
-
-### 1. Local installation and running
-
-This requires that you have nvm or node 17, MongoDB, and linux.
-
-```sh
-cd auction-api
-nvm use # .nvmrc expects node v17
-npm install
-# TODO: figure out how to set up Mongo and connect it manually
-npm start # runs node ./server.js by default
-```
-
-### 2. Local docker containers
-
-This requires that you have docker and docker-compose installed.
+Local running is through use of docker containers. This requires that you have docker and docker-compose installed.
 
 ```sh
 cd auction-api
 docker-compose up
 ```
 
-This should bring up the application on <http://localhost:3000>. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances. To reset the Mongo database, delete the relevant container.
+This should bring up the API on <http://localhost:3000>, and a cron job in a separate container that closes off auctions and marks the winner once every minute. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances. To reset the Mongo database, delete the relevant container.
 
 ## REST endpoints
 
 ### `/` GET
 
-The root route. Returns a simple server status response to confirm it's up and running. No auth is required.
+The root route. Returns a simple server status response to confirm the API is up and running. No auth is required.
 
 ### `/users/register` POST
 
