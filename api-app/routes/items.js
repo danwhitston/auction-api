@@ -29,6 +29,8 @@ router.post(
     const auction = new Auction({
       itemId: item._id,
       auctionStatus: "open",
+      winnerId: req.user._id, // By default, the item owner wins on no-bid
+      winnerAmount: 0,
       closingTime: req.body.closingTime,
     });
     item.auctionId = auction._id;

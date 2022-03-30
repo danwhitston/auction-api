@@ -18,8 +18,9 @@ router.post(
     // If the auction is closed, throw an error. This checks
     // both auction status and the closing time, just in case
     // an auction has reached its end date but is still
-    // waiting on the auction-closer daemon
-    if (auction.auctionStatus == "closed" || Date.now() > auction.closingTime) {
+    // waiting on the auction-closer daemon. Also, it uses the same
+    // date comparison logic as the auction-closer.
+    if (auction.auctionStatus == "closed" || auction.closingTime <= Date.now()) {
       res.status(400).send({message: "Auction is closed. No further bids accepted"});
     }
     // Look up the auction owner, throw an error if it's

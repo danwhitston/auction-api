@@ -21,6 +21,19 @@ const bidSchema = mongoose.Schema({
   },
 });
 
+bidSchema.post("save", function (next) {
+  const bid = this;
+  // Update the auction winnerId and winnerAmount if the new bid is greater
+  // Assumption: a bid-save will not clash with the auction closer task
+  // Assumption: 
+  const auction = bid.parent();
+  if (auction.winnerAmount < bid.amount && auction.auctionStatus == "open") {
+    auction.winnerAmount = bid.amount;
+    auction.winnerId = bid.userId;
+    auction.save();
+  }
+});
+
 const validateBidSchema = Joi.object({
   createdAt: Joi.date().default(Date.now()),
   userId: Joi.string().length(24),

@@ -14,6 +14,14 @@ async function main() {
   var auctionsToClose;
 
   try {
+    // This operates on two assumptions:
+    // 1. There is no overlap between the post-save hook on bid
+    //    submission and this auction closing action.
+    // 2. It is useful to recalculate the winning bid after completing
+    //    an auction, just in case there were any clashes during bid
+    //    submission.
+    // There are potential failure modes to this, that a more thoroughly
+    // worked-out solution would need to address. Specifically, 
     auctionsToClose = await findOverdueAuctions();
   } catch (error) {
     console.error("Mongo auctions to close query failed: " + error);

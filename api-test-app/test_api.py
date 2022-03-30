@@ -3,6 +3,19 @@ import pytest
 
 ENDPOINT = "http://localhost:3000"
 
+# There are major problems with the complete separation of testing and app
+# environments. Since the test environment does not control the app
+# environment, it's dependent on correct, manual setup of the app. I can see
+# three immediate problems from this:
+# 1. If the Mongo database is not empty, then the tests may fail in
+#    unpredictable ways. This also prevents re-running of tests without
+#    first resetting the environment.
+# 2. It's very difficult to deliberately introduce timing clashes between
+#    requests, which makes testing of sync issues harder.
+# 3. The test app can't mock or stub the API. In particular, it can't alter
+#    the system time as it's perceived by the API, which makes testing of
+#    auction closing times considerably less elegant.
+
 
 class User:
 

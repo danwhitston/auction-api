@@ -22,15 +22,12 @@ const auctionSchema = mongoose.Schema({
   },
   winnerId: {
     type: mongoose.Schema.Types.ObjectId,
-    require: false,
-    immutable: true,
   },
   winnerAmount: {
     type: Number,
-    require: false,
+    default: 0,
     min: [0, "Bid cannot be less than 0"],
     max: [100000000, "Bid cannot be greater than 100000000"],
-    immutable: true,
   },
   bids: [bidSchema],
 });

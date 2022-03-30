@@ -6,6 +6,7 @@ const authMiddleWare = require("../middleware/authorise");
 // Auctions are created by the /items POST route
 
 router.get("/", [authMiddleWare()], async (req, res) => {
+  console.log(req.query.status);
   try {
     const auctions = await Auction.find();
     res.send(auctions);
