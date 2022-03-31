@@ -6,7 +6,6 @@ Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud.
 
 I have read and understood the sections of plagiarism in the College Policy on assessment offences and confirm that the work is my own, with the work of others clearly acknowledged. I give my permission to submit my report to the plagiarism testing database that the College is using and test it using plagiarism detection software, search engines or meta-searching software.
 
-
 ## Application structure
 
 There are three applications, in three folders of the git repository:
@@ -18,6 +17,19 @@ There are three applications, in three folders of the git repository:
 The API, the auction closer script, and the underlying MongoDB storage have a docker-compose config for local development and hosting. The API test app makes requests against this, and requires a clean MongoDB database.
 
 ## Usage instructions
+
+### Service description
+
+The Auction API provides an API endpoint which can be communicated with using http requests. By making requests and parsing the responses you receive, you can:
+
+- check if the API is online
+- register as a user in the auction system
+- login to obtain an auth token, which you can use to authorise subsequent requests
+- post items for sale, with a description, condition, and auction closing time
+- get a list of all items that have been posted for sale
+- get a list of all auctions, or show either only open or only completed auctions
+- submit a bid for an open auction
+- get details for an auction to see whether it's open, the bidding history, and the current winner's ID and winning amount
 
 ### Setting up a development environment
 
@@ -51,10 +63,9 @@ pytest # Run the tests!
 
 The test objects are *not* deleted after a test run. The API does not have actions to enable deletion, and the test code does not control the application environment. Therefore, subsequent test runs will fail due to duplicate data, until the dockerised MongoDB database is dropped or the `mongo` container in which it operates is deleted and rebuilt.
 
-
 ### REST endpoints
 
-All actions are RESTful, with JSON body for POST data, an auth-token header where required for authorisation, and query params for parameters additional to the REST actions and resource identities. In the default setup, the root endpoint is at <http://localhost:3000/>.
+All actions are RESTful, with JSON body for POST data, an auth-token header where required for authorisation, and query params for parameters additional to the REST actions and resource identities. In the default local setup using docker-compose, the root endpoint is at <http://localhost:3000/>.
 
 The API sends one of three response statuses:
 
@@ -65,6 +76,10 @@ The API sends one of three response statuses:
 #### `/` GET
 
 The root route. Returns a simple server status response to confirm the API is up and running. No auth is required.
+
+```txt
+Server is running!
+```
 
 #### `/users/register` POST
 
@@ -99,7 +114,7 @@ Returns an error if anything goes wrong, otherwise returns an auth-token as payl
 
 #### `/items` POST
 
-Create a new item. This also creates an associated auction object to store bids and other auction-related information about the item. The request has to include a valid `auth-token` header.
+Create a new item. This also creates an associated auction object to store bids and other auction-related information about the item. Condition can be `used` or `new`. Closing time should be an ISO formatted date-time string, preferably using UTC. The request has to include a valid `auth-token` header.
 
 ```json
 {
@@ -300,6 +315,29 @@ An example response might be:
 
 ## Development notes
 
+### Handling auction end times
+
+There are two requirements for correct handling of auction end times:
+
+1. Valid bids submitted before the end time are accepted, and those submitted after the end time are rejected.
+2. The auction data is updated after the auction end time, to show the auction winner and sale price, and to mark the auction as closed.
+
+The no-bids-after-end-time requirement is simple to manage. Any submitted bid should be compared to the auction end time. This ensures correctness for all bid requests, provided the processing time between submission and comparison is sufficiently brief and the OS-provided datetime is correct.
+
+Marking an auction closed and setting the winner and sale price can be handled in one of several ways:
+
+- Run a scheduled task that finds auctions past their end time and updates the relevant fields.
+- Intercept all requests that depend on auction status and ensure the statuses of the auctions being requested are correct, by updating the relevant fields if they're incorrect due to the auction end time being in the past.
+- Use 'virtual' fields to show auction status, winning bidder and win price. Don't store them directly in the database, and instead calculate the relevant information using the auction end time and saved bids for the auction.
+
+Scheduled tasks are the correct solution for large-scale systems. They are a form of maintenance task, and the auction end tasks should also be able to trigger time-based actions such as sending of an email to the auction winner and the item owner.
+
+Triggering auction update actions when auction items are accessed by users has the advantage that you don't need to manage scheduled tasks, and that you avoid errors in accessing auctions past their end time that haven't yet been updated by the scheduled task. But in general, tagging maintenance tasks onto user requests is poor practice. It could result in arbitrary delays to auctions getting marked as closed, and time-based tasks such as notifying owners, winners, losers of the result would not work correctly.
+
+Using virtual fields is unwise in a real world scenario. Frankly, any storage of contractual information with substantial consequences for users should be backed by trustworthy, queryable journaling of transactions.
+
+To support this, I've implemented a separate scheduled task to mark auctions as closed, which runs once a minute in a separate docker container using cron. Currently, winning bid and winning amount are still saved by the bid POST action each time a bid is submitted. This could run into issues with sufficient bid frequency and volume as there's potential for overlap between parallel processes resulting in an incorrect winning bid being saved over the top of the correct one. I haven't implemented a solution for this, but have discussed it in the notes for potential future development.
+
 ### General notes
 
 Because we're using MongoDB via docker-compose for local running, we don't need auth. This does not obviate the need for auth in cloud environments, but we can solve that later. I've also kept in the JWT secret token as a `.env` setting for now, but have excluded the `.env` file from the git repo.
@@ -324,7 +362,7 @@ Items and Auctions have their respective references to each other as required fi
 
 I'm using the MongoDB internal ID as the public ID of documents. Ideally, we would use a public-facing ID for external consumption, but it's not a major issue either way.
 
-I've marked many fields in Auction and Bid records as immutable. This is a safety measure to reduce the possibility of auctions or bids getting modified after-the-fact, which would invalidate auction results and damage trust. In a production setup, I would set up a custom MongoDB user with limited permissions on collections, such that it was impossible for the API app to remove or modify bid documents, that changes to item information did not overwrite previous edits, and that auctions could not be removed but instead only marked as cancelled.
+I've marked some fields in Auction and Bid records as immutable, in the api-app. This is a safety measure to reduce the possibility of auctions or bids getting modified after-the-fact, which would invalidate auction results and damage trust. In a production setup, I would set up a custom MongoDB user with limited permissions on collections, such that it was impossible for the API app to remove or modify bid documents, that changes to item information did not overwrite previous edits, and that auctions could not be removed but instead only marked as cancelled.
 
 ### Completed tasks
 
@@ -379,6 +417,7 @@ The application does not have a configuration for production deployment, i.e. de
 - [ ] It's normal to guard against spam and DoS by rate limiting requests from individual accounts and IP addresses.
 - [ ] Test for and (if necessary) guard against clashes in assigning the winning bidder caused by overlapping bid requests. This could be managed by e.g. locking the auction object during update.
 - [ ] Consider using an SQL database for storage, either replacing or in addition to MongoDB. It's not clear that the advantages of NoSQL are suited to this particular application.
+- [ ] Add an emailing service triggered by the auction-closer, to email auction bidders when an auction closes and let them know whether they won, and to email the item owner and let them know the sale price.
 
 ## References
 
