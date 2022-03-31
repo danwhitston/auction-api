@@ -34,7 +34,6 @@ router.post(
   "/login",
   [validateBody(validateUserLogin)],
   async (req, res) => {
-    // TODO: test login route for query injection vulnerability
     // Check user exists
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
