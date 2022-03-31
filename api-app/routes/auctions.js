@@ -1,14 +1,19 @@
-const { Auction } = require("../models/auction");
+const { Auction, validateAuctionQuery } = require("../models/auction");
 const express = require("express");
 const router = express.Router();
 const authMiddleWare = require("../middleware/authorise");
+const validateQuery = require("../middleware/validateQuery");
 
 // Auctions are created by the /items POST route
 
-router.get("/", [authMiddleWare()], async (req, res) => {
-  console.log(req.query.status);
+router.get("/", [authMiddleWare(), validateQuery(validateAuctionQuery)], async (req, res) => {
   try {
-    const auctions = await Auction.find();
+    var auctions;
+    if (req.query.status) {
+      auctions = await Auction.find({auctionStatus: req.query.status});
+    } else {
+      auctions = await Auction.find();
+    }
     res.send(auctions);
   } catch (err) {
     res.status(400).send({ message: err });

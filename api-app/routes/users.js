@@ -3,14 +3,14 @@ const {
   validateUserWrite,
   validateUserLogin,
 } = require("../models/user");
-const validateMiddleWare = require("../middleware/validate");
+const validateBody = require("../middleware/validateBody");
 const router = require("./auctions");
 const bcrypt = require("bcrypt");
 const jsonwebtoken = require("jsonwebtoken");
 
 router.post(
   "/register",
-  [validateMiddleWare(validateUserWrite)],
+  [validateBody(validateUserWrite)],
   async (req, res) => {
     // Extract new user details to an object for passing to mongoose
     const user = new User({
@@ -32,7 +32,7 @@ router.post(
 
 router.post(
   "/login",
-  [validateMiddleWare(validateUserLogin)],
+  [validateBody(validateUserLogin)],
   async (req, res) => {
     // TODO: test login route for query injection vulnerability
     // Check user exists

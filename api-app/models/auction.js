@@ -44,9 +44,18 @@ const validateAuction = (auction) => {
   return schema.validate(auction);
 };
 
+const validateAuctionQuery = (auction) => {
+  // We don't have status of all as that's the default if the key is absent
+  const schema = Joi.object({
+    status: Joi.string().valid("open", "completed"),
+  })
+  return schema.validate(auction);
+}
+
 const Auction = mongoose.model("auction", auctionSchema);
 
 module.exports = {
   Auction,
   validateAuction,
+  validateAuctionQuery,
 };

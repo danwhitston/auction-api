@@ -3,7 +3,7 @@ const { Bid, validateBid } = require("../models/bid");
 const { Item } = require("../models/item");
 const express = require("express");
 const router = express.Router({ mergeParams: true });
-const validateMiddleWare = require("../middleware/validate");
+const validateBody = require("../middleware/validateBody");
 const authMiddleWare = require("../middleware/authorise");
 
 // Submit a bid for an open auction. I've left lots of code in that could
@@ -11,7 +11,7 @@ const authMiddleWare = require("../middleware/authorise");
 // controller setup, partly to reduce risk of evasion
 router.post(
   "/",
-  [authMiddleWare(), validateMiddleWare(validateBid)],
+  [authMiddleWare(), validateBody(validateBid)],
   async (req, res) => {
     const auctionId = req.params.id; // guaranteed to be string, apparently
     const auction = await Auction.findById(auctionId);
@@ -22,14 +22,15 @@ router.post(
     // date comparison logic as the auction-closer.
     if (auction.auctionStatus == "completed" || auction.closingTime <= Date.now()) {
       res.status(400).send({message: "Auction is completed. No further bids accepted"});
+      return;
     }
     // Look up the auction owner, throw an error if it's
     // the same user that's trying to submit a bid
-    const ownerId = await Item.findById(auction.itemId).ownerId;
-    // TODO: SOMETHING IS WRONG HERE
-    console.log("ownerId = "+ownerId+" and req user id = "+req.user._id)
+    const item = await Item.findById(auction.itemId);
+    const ownerId = item.userId;
     if (ownerId == req.user._id) {
       res.status(400).send({ message: "User cannot bid for their own item" })
+      return;
     }
     // Create bid and push it to the bids array
     const bid = new Bid({

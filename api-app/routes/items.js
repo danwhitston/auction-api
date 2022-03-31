@@ -3,7 +3,7 @@ const { Auction } = require("../models/auction");
 const { Bid } = require("../models/bid");
 const express = require("express");
 const router = express.Router();
-const validateMiddleWare = require("../middleware/validate");
+const validateBody = require("../middleware/validateBody");
 const authMiddleWare = require("../middleware/authorise");
 
 router.get("/", [authMiddleWare()], async (req, res) => {
@@ -15,9 +15,19 @@ router.get("/", [authMiddleWare()], async (req, res) => {
   }
 });
 
+router.get("/:itemId", [authMiddleWare()], async (req, res) => {
+  const itemId = req.params.itemId; // Guaranteed to be string, apparently
+  try {
+    const item = await Item.findById(itemId);
+    res.send(item);
+  } catch (err) {
+    res.status(400).send({ message: err });
+  }
+});
+
 router.post(
   "/",
-  [authMiddleWare(), validateMiddleWare(validateItem)],
+  [authMiddleWare(), validateBody(validateItem)],
   async (req, res) => {
     const item = new Item({
       title: req.body.title,

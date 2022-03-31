@@ -22,10 +22,15 @@ Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud
 - [x] Set up three-app structure for API, API tester, auction closer
 - [x] Create cron container to close auctions and mark winners
 - [x] Create Python testing app to query local instance
-- [ ] Write request handling code for test cases
-- [ ] Write test cases 1, 2, 3, 4
-- [ ] Write test cases 5, 6, 7, 8
-- [ ] Write test cases 9, 10, 11, 12, 13
+- [x] Write request handling code for test cases
+- [x] Write test cases 1, 2, 3, 4
+- [x] Write test cases 5, 6, 7, 8
+- [x] Implement GET /items/:id for test case TC8
+- [x] Write test cases 9, 10, 11, 12, 13
+- [x] Fix blocking of self-bidding
+- [x] Implement GET /auctions?status=X to only see open or completed auctions
+- [x] Implement confirm highest bid in POST /auction/:id/bids response
+- [ ] Fix the docker rebuild issue - both the auction-closer and api-app don't update the code using `docker up --build`, so I'm having to manually delete the existing containers before building and running tests
 
 ## Setting up a development environment
 
@@ -125,9 +130,9 @@ In the above, the closingTime is actually part of the auction information and ge
 
 List all items that have been submitted for auction. There is currently no ordering and no filtering on this list. The request has to include a valid `auth-token` header.
 
-### `/auctions` GET
+### `/auctions?status=open|completed` GET
 
-Returns a list of all auctions, including bids made for each auction. The request has to include a valid `auth-token` header.
+Returns a list of all auctions, including bids made for each auction. If the optional status parameter is included, then the list of auctions is filtered to either open or completed ones. The request has to include a valid `auth-token` header.
 
 ### `/auctions/:id` GET
 
