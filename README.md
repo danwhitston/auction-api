@@ -315,6 +315,65 @@ An example response might be:
 
 ## Development notes
 
+### Data structures
+
+To meet the specification, the API application uses four models, which are stored in MongoDB as three collections plus a subdocument array, as follows.
+
+![Diagram of models and relations](./Auction%20API%20data%20structure.svg)
+
+#### User
+
+Each registered user has their details stored in a single document defined by the User model, consisting of:
+
+- **username** - a mandatory, unique string between 3 and 256 letters long
+- **email** - a mandatory, unique string between 3 and 256 characters long, stored as lower case for ease of referening and to reduce risk of duplicate email addresses
+- **password** - a mandatory string between 8 and 1024 characters long. Created passwords are hashed with a salt prior to saving using a pre-save hook, so they cannot be easily decrypted if user data is compromised
+- **createdAt** - the date and time a document was created, i.e. when the user was registered
+
+Documents stored by the User model are stored in the MongoDB users collection. As with all collections, there's also a unique _id field that can be used to reference the user elsewhere in the database.
+
+#### Item
+
+Each item posted by a user is stored as a single document defined by the Item model, consisting of:
+
+- **title** - a short, mandatory string (max 256 characters) that acts as the name of the item
+- **condition** - a mandatory string that takes the value `new` or `used`
+- **description** - a long, mandatory string (max 32768 characters) that gives room for a complete description of the item, to enable bidders to fully understand what they're bidding for
+- **auctionId** - required _id value of the auction that matches to the item. Items and Auctions currently have a one-to-one relationship, but are stored separately to meet the stated requirements of the assignment
+- **userId** - required _id value of the user that posted the item.
+- **createdAt** - when the item was posted
+
+Keeping items and auctions separate makes it easier to decouple the two later on if desired, e.g. to have a single auction for multiple items, or multiple auctions for an item if the first auction is unsuccessful.
+
+Documents stored by the Item model are stored in the MongoDB items collection. While there should be no way to create an item with invalid references for userId and auctionId, there is also no enforcement of referential integrity as MongoDB is less concerned with data normalisation and enforcement of 'correctness'. In theory, a rogue request could destroy a referenced document and leave an item stranded without a matching user or auction. Or it could assign multiple auctions to a single item or vice versa. At scale, it would be necessary to run regular checks on data integrity to flag inconsistencies and take appropriate remedial action.
+
+#### Auction
+
+When a user posts an item, the save process automatically creates a matching auction document, consisting of:
+
+- **itemId** - mandatory _id value of the item that is being auctioned. Each item should reference one auction, and that auction should in turn reference the same item back again. This makes it possible to navigate in both directions. This field is marked as immutable in the model as it should never need to be changed once created
+- **auctionStatus** - a mandatory string that takes the value `open` or `completed`. Auctions are set to open at the time of creation since it's assumed that they start taking bids immediately. They are then set to completed once the closingTime is reached, by the auction-closer script that runs every minute
+- **closingTime** - a mandatory, user-supplied date and time at which the auction will stop taking bids and declare a winner. The value of this is submitted as part of an item posting, but is actually saved in the matching auction record. This field is marked as immutable in the model as it should not need to be changed once created
+- **winnerId** - the _id value of the user with the current winning bid. At time of creation, this is set to the user who posted the item originally, since they 'win' by default if nobody else bids. Each time a valid bid is submitted for the auction, the winnerId is updated to the user posting the bid, if and only if it's higher than the previous winnerAmount and the auction is still marked as open
+- **winnerAmount** - the amount of the current winning bid, stored as a number between 0 and 100000000. At time of creation, this is set to 0, which creates a lower threshold for subsequent bids to be marked as winning
+- **bids** - an array of Bid documents, stored inside the auction to which they apply. At time of creation, a single zero-value bid is posted in the array, attributed to the user who is posting the item in the first place
+
+The auction record does not store a permanent reference to the user who created it and thus posted the item for sale. We look up the user via the original item record instead. Doing this results in a minor reduction in duplication and potential inconsistency.
+
+Documents stored in the Auction model are stored in the MongoDB auctions collection. This is kept as a separate collection to the items collection instead of subdocuments, to make direct search and retrieval of auctions simpler and more efficient. However, because item creation and auction creation are two separate transactions, there is potential for breakage if e.g. the item saves correctly but the auction save fails for some reason. This would hopefully be extremely rare, and would require manual admin intervention for occasional use, and either automated detection or proper wrapping of related transactions for larger scale use.
+
+#### Bid
+
+Each bid posted by a user is stored as a single document, in an array field inside the auction document that the bid relates to. Thus, there is no single collection of bids. Instead, all bids pertaining to an auction are stored together, making them easier to identify and query in the context of their auction, but harder to compare against the universe of all bids in all auctions. I believe that matches to likely usage patterns of the data.
+
+- **userId** - mandatory _id value of the user posting the bid. As with all such fields, the user ID is determined using OAuth 2 with JSON webtoken, which is sent along with the request and when decoded gives the user ID
+- **amount** - mandatory number between 0 and 100000000 that represents how much is being offered in the auction. This is the only key-value in the body of the bid posting request
+- **createdAt** - when the bid was placed
+
+Bids are defined in the model as entirely immutable once successfully created. There are no REST actions other than posting, and as with other records the createdAt is determined internally based on the current system time. Further, bid submission checks both the auction status and the closing time, and fails if either is invalid, just in case there's an inconsistency caused by e.g. the auction-closer not yet triggering. This is important, as trustworthiness of bid information and correctness of the auction winner is critical to successful operation of the platform. This is also why there is no way for a user to set the value of a createdAt field as part of any requests.
+
+One option for further development would be to offer withdrawl of a bid, provided an auction was still open. This would need to preserve immutability of the original request details for security and transparency reasons, so could be achieved by e.g. an extra field called withdrawnAt that updated the first time a deletion request was received for a bid, from the bidder concerned.
+
 ### Handling auction end times
 
 There are two requirements for correct handling of auction end times:
