@@ -37,10 +37,13 @@ Local running is through use of docker containers. This requires that you have d
 
 ```sh
 cd auction-api
+echo "TOKEN_SECRET=aaabbbccc1234567890" > .env # replace this with your own secret value!
 docker-compose up
 ```
 
-This should bring up the API on <http://localhost:3000>, and a cron job in a separate container that closes off auctions and marks the winner once every minute. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances. To reset the Mongo database, delete the relevant container.
+This should bring up the API on <http://localhost:3000>, and a cron job in a separate container that closes off auctions and marks the winner once every minute. If you change the code and want to rebuild the docker instances, simply use `docker-compose up --build` to force a rebuild when bringing up the docker instances.
+
+To reset the Mongo database, run `docker-compose rm -fv`. Be warned that, even though this will clear the Mongo data including registrations, any auth-tokens you've generated will still be valid. This is because the token itself contains the user ID, and the JWT auth remains valid as it's based on a static secret token. However, any requests that create data will either fail or produce documents with references to a non-existent user ID.
 
 ### Running tests
 
@@ -56,12 +59,13 @@ Before running tests, bring up a (preferably blank) docker setup:
 
 ```sh
 cd auction-api/
-docker-compose up --build
+docker-compose rm -fv # This deletes the current database and loses all data!
+docker-compose up
 cd api-test-app
-pytest # Run the tests!
+pytest # Run the tests
 ```
 
-The test objects are *not* deleted after a test run. The API does not have actions to enable deletion, and the test code does not control the application environment. Therefore, subsequent test runs will fail due to duplicate data, until the dockerised MongoDB database is dropped or the `mongo` container in which it operates is deleted and rebuilt.
+The test objects are *not* deleted after a test run. The API does not have actions to enable deletion, and the test code does not control the application environment. This is why `docker-compose rm -fv` is necessary before a test run.
 
 ### REST endpoints
 
@@ -364,7 +368,7 @@ Documents stored in the Auction model are stored in the MongoDB auctions collect
 
 #### Bid
 
-Each bid posted by a user is stored as a single document, in an array field inside the auction document that the bid relates to. Thus, there is no single collection of bids. Instead, all bids pertaining to an auction are stored together, making them easier to identify and query in the context of their auction, but harder to compare against the universe of all bids in all auctions. I believe that matches to likely usage patterns of the data.
+Each bid posted by a user is stored as a single document, as part of an array of documents inside the auction document that the bid relates to. Thus, there is no single collection of bids. Instead, all bids pertaining to an auction are stored together, making them easier to identify and query in the context of their auction, but harder to compare against the universe of all bids in all auctions. I believe that matches to likely usage patterns of the data.
 
 - **userId** - mandatory _id value of the user posting the bid. As with all such fields, the user ID is determined using OAuth 2 with JSON webtoken, which is sent along with the request and when decoded gives the user ID
 - **amount** - mandatory number between 0 and 100000000 that represents how much is being offered in the auction. This is the only key-value in the body of the bid posting request
@@ -453,10 +457,10 @@ The following tasks have already been completed:
 - [x] Fix blocking of self-bidding
 - [x] Implement GET /auctions?status=X to only see open or completed auctions
 - [x] Implement confirm highest bid in POST /auction/:id/bids response
+- [x] Fix the docker rebuild issue - auction-closer and api-app don't update their code when using `docker up --build`, so I'm manually deleting the existing containers before building and running tests
 
 There are some additional short-term improvements to be completed:
 
-- [ ] Fix the docker rebuild issue - auction-closer and api-app don't update their code when using `docker up --build`, so I'm manually deleting the existing containers before building and running tests
 - [ ] Allow the api-test-app to directly set up fresh docker containers, run tests against them, and then delete them
 - [ ] Confirm that all routes and parameters are fully validated and protected against query injection
 - [ ] Extract model references to their own functions, all in the same route or controller. Currently, I call Item, Auction, and Bid from within the same route file
