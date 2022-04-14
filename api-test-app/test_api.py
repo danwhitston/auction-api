@@ -145,7 +145,8 @@ def test_TC3():
     olga.post_item(
         'A lovely teapot',
         'used',
-        'This teapot is marvellous, not least because it should never appear in the auction catalogue.',
+        'This teapot is marvellous, not least because it should never '
+        'appear in the auction catalogue.',
         (datetime.datetime.utcnow() +
          datetime.timedelta(
             days=1)),

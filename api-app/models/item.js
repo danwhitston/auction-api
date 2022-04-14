@@ -22,6 +22,7 @@ const itemSchema = mongoose.Schema({
   },
   description: {
     type: String,
+    require: true,
     max: [32768, "Description length is max 32768 characters"],
   },
   auctionId: {
