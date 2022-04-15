@@ -41,11 +41,13 @@ echo "TOKEN_SECRET=aaabbbccc1234567890" > .env # replace this with your own secr
 docker-compose up
 ```
 
-This should bring up the API on <http://localhost:3000>, and a cron job in a separate container that closes off auctions and marks the winner once every minute.
+This should bring up the API on <http://localhost:3000>. To verify it's working, navigate to that address in a browser and you should see the message 'Server is running!' in the browser window.
 
-Docker containers, images and volumes may behave unexpectedly depending on how you use them. To avoid confusion, do the following:
+The docker compose file sets up three separate services: the API, the auction-closer which runs on a cron job, and a MongoDB service that stores data for the API. Both the API and the auction-closer communicate with the Mongo database, but the only service that's exposed to users is the API, via requests to the localhost endpoint.
 
-- **To stop and start without losing the state of your containers**, either run `docker-compose stop` or interrupt the process in the console with Ctrl-C. This will preserve the db content. Then run `docker-compose start` to restart them. This has the advantage that you can preserve the state of your database without having to re-seed its contents. But on the downside, any changes you make to the application source code will not be reflected in the dockerised applications. You can however rebuild individual services by name using e.g. `docker-compose build web closer`.
+Because of the services being used, the services may behave unintuitively when stopped and started. To avoid confusion, do the following:
+
+- **To stop and start without losing the state of your containers**, either run `docker-compose stop` or interrupt the process in the console with Ctrl-C. This will preserve the db content. Then run `docker-compose start` to restart them. This has the advantage that you can preserve the state of your database without having to re-seed its contents. But on the downside, any changes you make to the application source code will not be reflected in the dockerised applications. You can however rebuild individual services by name using e.g. `docker-compose build web closer`, which will refresh the code without affected the MongoDB service.
 - **When stopping the services, to clear data and builds for both the Mongo database and the two applications**, run `docker-compose down --rmi local` in the root folder. You can do this in a separate console, or use Ctrl-C to stop the containers and get control back, then run this command. The next time you bring up the services, they will start afresh.
 - **To guarantee a fresh build, with a clean database and freshly built applications**, run `docker-compose up --build -V`. This takes slightly longer to start due to the rebuilding process, but you definitely won't be running old code or using a database with existing records.
 
@@ -58,7 +60,7 @@ You'll need a Python 3 installation on your machine, and both `pytest` and the `
 ```sh
 cd auction-api/api-test-app
 pip install pytest
-pip install pytest-dependency # This ensures tests are run in the correct order
+pip install pytest-dependency     # This ensures tests are run in the correct order
 ```
 
 Before running tests, bring up a fresh docker setup:
@@ -456,9 +458,59 @@ To support this, I've implemented a separate scheduled task to mark auctions as 
 
 ### Test approach and test cases
 
-TODO: Write this section!
+The project brief required that a test suite be written separately using Python, using http requests to test numerous aspects of the API's behaviour. This has been implemented in the api-test-app folder, as a set of pytest tests in <api-test-app/test_api.py>.
 
-The project required that a test suite be written separately using Python, using http requests to test numerous aspects of the API's behaviour. This has been implemented in the api-test-app folder, as <api-test-app/test_api.py>. The User class in that file also acts as demonstration code for interacting with the API, since it provides methods for making each type of request.
+There are advantages and disadvantages to this approach:
+
+- Pytest provides a useful, standardised framework for collating, running and reporting on test cases, and keeping all of the test cases in one system means that it's easier to regularly run all tests as part of a development process
+- Running the tests entirely separately from the application codebase ensures true end-to-end integration testing, making the results more trustworthy
+- The setup required to run tests from the outside also means that the `test_api` code provides a demonstration of how to interact programmatically with the API, making it easier to provide accurate API documentation and examples to follow
+- External testing does not support unit testing, making test-driven development more difficult
+- Tests are fragile to disruption by environmental factors. If anything goes wrong in the docker instances, for example the database isn't cleared before testing or the docker cron setup stops working for some reason, then all of the testing will fall over until the issue is fixed
+- External testing removes control over the internal conditions of the application environment. Most obviously, this hampers testing around behaviour of auction closing times. The test_TC11 test case shows one way of working around this particular issue, but there are others, e.g. testing whether overlapping bid-saves could lead to an incorrect winnerId being set
+
+A deeper issue with testing in docker is that assurance of application behaviour in a containerised local environment does not guarantee the same behaviour in a production environment. We would normally use dedicated cloud services instead of docker containers. With Google Cloud Platform, instead of three docker containers we would be using managed MongoDB Atlas, managed application hosting such as App Engine, and Cloud Scheduler triggering Cloud Functions instead of a dockerised cron job. These services all operate in a distributed fashion, so they behave differently and require awareness of issues that can occur more frequently in distributed systems.
+
+The User class in that file provides demonstration code for interacting with the API in Python. Each user of the API is represented by a separate instance of the User class, and the user instance automatically retrieves and stores key information about the user from the API's responses to requests. Thus, if we want to create a user called Olga, have her log in to get an auth token, then post an item for sale with a closing date 1 day from now, we could use the following:
+
+```python
+olga = User('Olga')
+olga.register("olga", "olga@example.com", "aPassword")
+olga.login()
+olga.post_item(
+    'A lovely teapot',
+    'used',
+    'This teapot is marvellous, not least because it should never '
+    'appear in the auction catalogue.',
+    (datetime.datetime.utcnow() +
+     datetime.timedelta(
+        days=1)))
+```
+
+In the above, we don't need to pass the email and password to the login request because the `User.register()` method stores the arguments passed to it and uses them as needed for future requests. Likewise with the auth-token header that we're given in response to `User.login()`.
+
+The test cases match to those required in the brief, with one additional case and additional checks within some of the required cases. Because many test cases follow on from each other and rely on the database state produced by previous requests, I've used `pytest-dependency` to enforce an ordered execution of the test cases. For the same reason, there is no cleaning of the database between tests.
+
+The individual cases, with descriptions taken directly from the project brief, are:
+
+- **test_get_root - Test that GET / returns a status message**. This is the simplest possible test. It doesn't rely on the User class as the request to root (i.e. GET <http://localhost:3000/>) can be made anonymously, and serves mainly to confirm that the environment setup has succeeded and the API is listening on the correct port
+- **test_TC1 - Olga, Nick and Mary register in the application and are ready to access the API**. For each user, send a request to `/users/register`, and confirm both that the response code is 200 and that a user ID has been received and stored
+- **test_TC2 - Olga, Nick and Mary will use the oAuth v2 authorisation service to get their tokens**. For each user, send a request to `/users/login`, and confirm both that the response code is 200 and that an auth-token has been received and stored
+- **test_TC3 - Olga makes a call to the API (any endpoint) without using a token. This call should be unsuccessful as the user is unauthorised**. Get Olga to send a POST request to `/items` with no auth-token header, and confirm that the response code is 401
+- **test_TC4 - Olga adds an item for auction with an expiration time using her token**. For this, Olga sends the same request as in test_TC3, but include the auth-token in the header that she received following her successful login in test_TC2. Confirm the response code is 200 and that Olga has received and stored an item ID
+- **test_TC5 - Nick adds an item for auction with an expiration time using his token**. Same as with Olga in test_TC4, Nick makes a POST request to `/items` with the auth-token in the header that he received in test_TC2. Confirm the response code is 200 and that Nick has received and stored an item ID
+- **test_TC6 - Mary adds an item for auction with an expiration time using her token**. Same as Olga and Nick, a post request to `/items` with her auth-token in the header. Confirm the response code is 200 and that Nick has received and stored an item ID
+- **test_TC7 - Nick and Olga browse all the available items, there should be three items available**. This requires each of them to GET `/items` with their auth-token in the header, then confirm that the response status is 200 and there are three elements in the JSON array that gets returned in the body
+- **test_TC8 - Nick and Olga get the details of Mary’s item**. To account for the separation between items and auctions, Nick and Olga each make GET requests to both `/items/:id` where the ID is the item ID returned from Mary's item posting request in test_TC6, and to `/auctions/:id` where the ID is the auction ID taken from the same response. Confirm that all four response codes are 200, that the title in the returned item matches the title posted by Mary, and that the ID code of the auction record returned matches the one sent to Mary in each case. That last check isn't terribly informative, but does ensure that the record is present.
+- **test_TC9 - Mary bids for her item. This call should be unsuccessful, an owner cannot bid for their own items**. Mary makes a POST request to `/auctions/:id/bids` where :id is the auction ID returned in test_TC6, with her auth-token in the header as usual. But instead of a 200 she should get a 400 response code, indicating that the request was not accepted.
+- **test_TC10 - Nick and Olga bid for Mary’s item in a round-robin fashion (one after the other)**. To satisfy this, we alternate POST requests to `/auctions/:id/bids` by Nick and Olga, both using the same auction ID that was returned to Mary, but increasing the amounts each time. I also inserted a wrinkle in this test case by making the last bid, by Olga, equal in amount to the preceding bid by Nick. The auction rules I've implemented allow for bids to be submitted at or below the highest bid amount, but they only update the winner if the bid amount is above that of the previous highest bidder. Therefore, we confirm that each bid request has a 200 response. We also confirm that, after the final bid, which is made by Olga, the winnerID shown in the response body is actually Nick's user ID.
+- **test_TC11 - Nick or Olga wins the item after the end of the auction**. This is where it gets more complex. We can't easily change the system time on the docker services, as they operate separately to the Python test script. To get around this, we set a closingTime in the very near future for Mary's auction, back in test_TC6. 20 seconds seems to work fine. Then Nick makes a GET request to `/auctions/:id` with the ID of Mary's auction, on a loop with a 10-second delay, until either the auction status in the response is marked as 'completed', or 100 seconds have passed. Then we confirm that the response code is 200, that the winner is marked as Nick, that the winning amount is the highest amount that Nick bid in test_TC10, and that the auction status for Mary's is showing as completed. All of these are returned by the GET request.
+- **test_TC12 - Olga browses all the items sold**. Olga makes a GET request to `/auctions?status=completed`, and confirms that the response code is 200 and that Mary's auction ID is the ID of the first element in the response array. This has the wrinkle that we can query auctions by auction status, but not items. If we want the item information for each auction, we would need to pull in the item data using the itemId field that is present in each auction record, then make GET requests to `/items/:id` for each item thus identified.
+- **test_TC13 - Mary queries for a list of bids as historical records of bidding actions of her sold item**. The API schema makes this one trivial. Mary makes a GET request to `/auctions/:id` where :id is the ID of her auction, and the bids array in the response will contain all of the bid records for that auction. In this case, we just confirm that there are five bid records in the array, representing the automatic starting bid of 0 made by the original item submitter, and the four bids we made in test_TC10.
+
+![Screenshot of a successful pytest run](./pytest-run-successful.png)
+
+The above screenshot shows a successful pytest run of the described test cases, in the command line. I used two console sessions, one to set up the docker environment and monitor activity, the other to run the test suite. I could have run both in the same console session by using the `-d` flag on docker-compose to detach docker execution from the shell process, but it's useful to keep the output visible. In this particular test run, I used the `-ra` and `-vv` flags on pytest to produce more verbose output for passing tests, as the standard output for all tests passing is less useful in a screenshot. One other thing the screenshot doesn't show is the pause of about a minute during execution of test_TC11, while the test waits for the auction-closer to trigger and mark Mary's auction as closed.
 
 ### General notes
 
