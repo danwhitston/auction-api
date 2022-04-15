@@ -55,7 +55,7 @@ Finally, a major caveat when working in a development environment. Instructions 
 
 ### Running tests
 
-You'll need a Python 3 installation on your machine, and both `pytest` and the `pytest-dependency` plugin:
+Tests are run locally, instead of setting up another docker service. You'll need a Python 3 installation on your machine, and both `pytest` and the `pytest-dependency` plugin:
 
 ```sh
 cd auction-api/api-test-app
@@ -570,28 +570,25 @@ The following tasks have already been completed:
 - [x] Implement confirm highest bid in POST /auction/:id/bids response
 - [x] Fix the docker rebuild issue - auction-closer and api-app don't update their code when using `docker up --build`, so I'm manually deleting the existing containers before building and running tests
 
-There are some additional short-term improvements to be completed:
-
-- [ ] Allow the api-test-app to directly set up fresh docker containers, run tests against them, and then delete them
-- [ ] Confirm that all routes and parameters are fully validated and protected against query injection
-- [ ] Extract model references to their own functions, all in the same route or controller. Currently, I call Item, Auction, and Bid from within the same route file
+One task was also dropped following development of a draft solution. I used the `python_on_whales` package to automate setup of test docker services in a separate namespace, so that tests could be run with a single `pytest` command rather than manually setting up a 'clean' set of services. However, brief usage convinced me that this would add fragility to the overall setup, and hide important detail from developers who would be managing a development docker-compose development.
 
 ### Tasks for production deployment
 
-The application does not have a configuration for production deployment, i.e. deployment on the cloud with access via the open internet. To achieve this, several further tasks would be required:
+The application does not have a configuration for production deployment, i.e. deployment on the cloud with access via the open internet. A reliable, secure, professional cloud setup would benefit from the following:
 
-- [ ] Auth-token storage and retrieval in the database, token expiry, and token revocation - these are required for security, as an attacker who stole someone's auth-token would otherwise have irrevocable access to their account.
-- [ ] Virtual Private Cloud (VPC) setup to ensure that only the API endpoint is accessible via the open internet.
-- [ ] Auth between services, specifically adding a username and password for MongoDB to be accessed by the API and auction-closer services. If neither this nor the VPC are implemented, then the MongoDB service presents a substantial **security risk** in production deployment.
-- [ ] CI/CD scripts that build and test the app in a managed cloud environment, then allow merge to production branch if tests pass and approval is given, then deploys from production branch to the production service. This could be written using GitHub Actions, a dedicated CI service such as CircleCI, or one of the cloud providers' own services.
+- [ ] Extract controllers from the existing route code, and move code that works with each model to the matching controller. As an example, the Item route saves a new Item, Auction, and Bid, and there is logic affecting Auction and Bid objects contained directly within the Item route and model
+- [ ] Auth-token storage and retrieval in the database, token expiry, and token revocation - these are required for security, as an attacker who stole someone's auth-token would otherwise have irrevocable access to their account
+- [ ] Virtual Private Cloud (VPC) setup to ensure that only the API endpoint is accessible via the open internet
+- [ ] Auth between services, specifically adding a username and password for MongoDB to be accessed by the API and auction-closer services. If neither this nor the VPC are implemented, then the MongoDB service presents a substantial **security risk** in production deployment
+- [ ] CI/CD scripts that build and test the app in a managed cloud environment, then allow merge to production branch if tests pass and approval is given, then deploys from production branch to the production service. This could be written using GitHub Actions, a dedicated CI service such as CircleCI, or one of the cloud providers' own services
 - [ ] Ensure that the API endpoint is only addressable via https, i.e. that all communication is secure. The auth-token approach is trivially insecure without this.
-- [ ] Application monitoring and statistics. The AWS version of this is CloudWatch, which can be used to monitor service usage levels, CPU and database load, error rates, and more. Alarms can be set up to alert admins if error rates go down.
-- [ ] Most cloud services offer multi-zone or multi-region mirroring of services. To make use of this, we'd want to use e.g. MongoDB Atlas, and an API gateway service that load-balanced across multiple servers running the API, and handing off to each other in the event of downtime. This would also make it easier to use gradual roll-out and instant roll-back on error, blue-green deployment, and versioned API support.
-- [ ] Handling of requests or responses that get lost in transit. Currently, if a user does not receive a response, then they cannot be certain if their request was actioned without manually querying the parent of whatever object they're trying to create. There is also no protection against duplicate requests when posting items. It may be sensible to operate a two-step process where a user first requests an ID for their actual request, then sends a PUT with the actual request and the assigned ID to prevent duplication.
-- [ ] It's normal to guard against spam and DoS by rate limiting requests from individual accounts and IP addresses.
-- [ ] Test for and (if necessary) guard against clashes in assigning the winning bidder caused by overlapping bid requests. This could be managed by e.g. locking the auction object during update.
-- [ ] Consider using an SQL database for storage, either replacing or in addition to MongoDB. It's not clear that the advantages of NoSQL are suited to this particular application.
-- [ ] Add an emailing service triggered by the auction-closer, to email auction bidders when an auction closes and let them know whether they won, and to email the item owner and let them know the sale price.
+- [ ] Application monitoring and statistics. The AWS version of this is CloudWatch, which can be used to monitor service usage levels, CPU and database load, error rates, and more. Alarms can be set up to alert admins if error rates go down
+- [ ] Most cloud services offer multi-zone or multi-region mirroring of services. To make use of this, we'd want to use e.g. MongoDB Atlas, and an API gateway service that load-balanced across multiple servers running the API, and handing off to each other in the event of downtime. This would also make it easier to use gradual roll-out and instant roll-back on error, blue-green deployment, and versioned API support
+- [ ] Handling of requests or responses that get lost in transit. Currently, if a user does not receive a response, then they cannot be certain if their request was actioned without manually querying the parent of whatever object they're trying to create. There is also no protection against duplicate requests when posting items. It may be sensible to operate a two-step process where a user first requests an ID for their actual request, then sends a PUT with the actual request and the assigned ID to prevent duplication
+- [ ] It's normal to guard against spam and DoS by rate limiting requests from individual accounts and IP addresses
+- [ ] Test for and (if necessary) guard against clashes in assigning the winning bidder caused by overlapping bid requests. This could be managed by e.g. locking the auction object during update
+- [ ] Consider using an SQL database for storage, either replacing or in addition to MongoDB. It's not clear that the advantages of NoSQL are suited to this particular application
+- [ ] Add an emailing service triggered by the auction-closer, to email auction bidders when an auction closes and let them know whether they won, and to email the item owner and let them know the sale price
 
 ## References
 
