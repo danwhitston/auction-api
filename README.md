@@ -84,21 +84,32 @@ The API sends one of three response statuses:
 - 400 - the request failed. Accompanying information may be returned as plain text.
 - 401 - authentication failure. The accompanying text indicates a more precise cause.
 
-Full details of each API call are included below. However, as an introduction to interacting with the API, you may wish to try the following exercise:
+Full details of each API call are provided later on. However, as an introduction to interacting with the API, you may wish to try the following exercise. The included screenshots were taken in Postman. The requests were made against an API after first generating some dummy records by running the Python testing app, to give some more content to play with:
 
-- First, set up a development environment as described above
+- First, set up a development environment as described previously
 - Check the API is online by navigating to the root. You can even do this in a web browser. The default address is <http://localhost:3000/>
+  ![Screenshot of browser showing server status](./images/tour-00-check-server-status.png)
 - Then, create a new user by making a POST request to `/users/register` (i.e. <http://localhost:3000/users/register>) using a request tool such as Postman
+  ![Screenshot of request to register a new user](./images/tour-01-register-user.png)
 - Generate an auth-token to prove you're the user by making a POST request to `/users/login`, and copying the auth-token you get in response. You'll need to include that auth-token as a header in all the requests you make below
+  ![Screenshot of request to log in as the new user](./images/tour-02-login-user.png)
 - Now, put an item up for auction by making a POST request to `/items`. This creates both an item record with the details of what the item is, its description etc. It also creates an auction record which is used to track the progress of the auction, to store bids, and to determine the eventual winner of the auction
+  ![Screenshot of request to post a new item for auction](./images/tour-03-post-item.png)
 - Want to see the item you just posted? You can browse item details with a GET request to `/items`, or make a GET request to `/auctions` to see how the auction is progressing for each item that's been posted. If you're looking for only open or only completed auctions, add a parameter of the form `?status=open|completed` to the auctions URL
-- Bids donEach auction response includes a list of all bids to date in an array called bids
+  ![Screenshot of request to show all items, with the response body cut off due to length](./images/tour-04-get-items.png)
+- Each auction response includes a list of all bids to date in an array called bids
+  ![Screenshot of request to show all open auctions, with the response body cut off due to length](./images/tour-05-get-open-auctions.png)
 - Because records cross-reference each other, you can use the itemId in an auction record to look up the matching item details, or the auctionId in an item record to look up the matching auction, using a GET request to `/items/:id` or `/auctions/:id`
+  ![Screenshot of request to show a single auction using the auction ID](./images/tour-06-get-auction-by-id.png)
 - There's a problem with all of this. If you're running on your local machine, you're probably the only 'user', and you can't bid on your own auctions. To try out the bidding functionality, you'll need to make register and login requests for multiple different users, with unique usernames and email addresses. This will give you a different `auth-token` value for each user, and you can pretend to be different users by using their auth-token values in the requests that you make
-- The purpose of the auction system is to allow users to bid on each other's items. So, once you've found an item you like, submit a bid by making a POST request to `/auctions/:id/bids`. If you're bidding on an item that you posted, your request will fail. It will also fail if the auction's closingTime has passed and the auction status is closed. If your bid is successful, the response will give full details of the auction, including all bids to date and the current highest bidder's userId and amount. If you submitted the highest bid, this will be you
+- The purpose of the auction system is to allow users to bid on each other's items. So, once you've found an item you like, submit a bid by making a POST request to `/auctions/:id/bids`. If you're bidding on an item that you posted, your request will fail.
+  ![Screenshot of request to bid on own item](./images/tour-07-post-bid-for-own-item.png)
+  It will also fail if the auction's closingTime has passed and the auction status is closed. If your bid is successful, the response will give full details of the auction, including all bids to date and the current highest bidder's userId and amount. If you submitted the highest bid, this will be you
+  ![Screenshot of request to bid on someone else's item, as the highest bidder](./images/tour-08-post-bid-for-other-item.png)
 - Once the auction is finished, the auctionStatus will be marked as completed, and the winner's userId and bid amount will be stored in the main auction record. The bids array in the auction record will include a record of all bids submitted
+  ![Screenshot of request to show an auction that's ended and had multiple bids](./images/tour-09-show-completed-auction-by-id.png)
 
-The above tour covers all of the API's functionality. The auction-closer application doesn't support user interaction, and can be seen in action when it changes the auction status to closed once the closingTime has been reached. Instructions for running the API test cases can be found in the 'Running tests' section, and the Python code provides a model for how to interact with the API programmatically.
+The above tour covers all of the API's functionality. The auction-closer application doesn't support user interaction, and can be seen in action when it changes the auction status to closed once the closingTime has been reached. Instructions for running the API test cases can be found in the 'Running tests' section, and the Python code provides a model for how to interact with the API programmatically. In addition, the following API documentation gives routes, parameters and responses for every implemented API action.
 
 #### `/` GET
 
@@ -352,7 +363,7 @@ In the implementation of the brief, I've used a docker-compose configuration tha
 
 I have left one aspect of the project outside of docker, as the project brief required that it be developed outside of the virtual machine. The Python testing application is designed to be run locally, and interacts with the dockerised services through a localhost endpoint to provide assurance that the services are actually accessible by the outside world and that their behaviour matches expectations when interacted with using actual API requests. I did consider automating the docker setup and teardown such that tests could be run with a single command, but the fragility and obscurity of the solution outweighed the reduction in complexity for developers.
 
-It's worth noting that, although the docker setup is ready for containerised development, most modern IaaS providers operate their own dedicated services that are preferable to deploying on docker containers. With Google Cloud Platform, instead of three docker containers we would use managed MongoDB Atlas, managed application hosting such as App Engine, and Cloud Scheduler triggering Cloud Functions instead of a dockerised cron job. These services all operate in a distributed fashion, so they behave differently and require awareness of issues that can occur more frequently in distributed systems.
+It's worth noting that, although the docker setup is ready for containerised development, the main IaaS providers operate their own dedicated services that are preferable to deploying on docker containers. With Google Cloud Platform, instead of three docker containers we would use managed MongoDB Atlas, managed application hosting such as App Engine, and Cloud Scheduler triggering Cloud Functions instead of a dockerised cron job. These services all operate in a distributed fashion, so they behave differently and require awareness of issues that can occur more frequently in distributed systems.
 
 The different infrastructure for production means that there would still be further work to ready the project for actual production-quality deployment. Some cloud services can be mimicked locally using e.g. the AWS SDK, but if those were used we would still want to use them within containers, to properly isolate and manage their configuration. It would also be much simpler to extend a containerised setup than a purely local one, given that we have a guarantee that the infrastructure and underlying state are fully encapsulated in the docker configuration. I've written a list of tasks that would improve production readiness, and included them at the end of the architecture section.
 
@@ -360,7 +371,7 @@ The different infrastructure for production means that there would still be furt
 
 To meet the specification, the API application uses four models, which are stored in MongoDB as three collections plus a subdocument array, as follows.
 
-![Diagram of models and relations](./Auction%20API%20data%20structure.svg)
+![Diagram of models and relations](./images/Auction%20API%20data%20structure.svg)
 
 #### User
 
@@ -430,7 +441,7 @@ There are several consequences to this immutability:
 - If a user is deleted, the token is still valid. So it's possible for item, auction and bid postings to be made by a non-existent user
 - The lack of an expiry date means that a token can be used forever. This further increases the risk posed by compromise of a user's credentials
 
-![Screenshot of a successful API request from a nonexistent user](./api-request-by-nonexistent-user.png)
+![Screenshot of a successful API request from a nonexistent user](./images/api-request-by-nonexistent-user.png)
 
 The above screenshot shows a POST request made using a non-existent user following database reset. The user existed at the time of token generation, but the database reset has not invalidated the token since the TOKEN_SECRET value is still the same. The request returns a success response and generates item, auction, and bid objects. All of these objects refer to a non-existent user ID, retrieved from the JWT that forms the auth-token.
 
@@ -519,7 +530,7 @@ The individual cases, with descriptions taken directly from the project brief, a
 - **test_TC12 - Olga browses all the items sold**. Olga makes a GET request to `/auctions?status=completed`, and confirms that the response code is 200 and that Mary's auction ID is the ID of the first element in the response array. This has the wrinkle that we can query auctions by auction status, but not items. If we want the item information for each auction, we would need to pull in the item data using the itemId field that is present in each auction record, then make GET requests to `/items/:id` for each item thus identified.
 - **test_TC13 - Mary queries for a list of bids as historical records of bidding actions of her sold item**. The API schema makes this one trivial. Mary makes a GET request to `/auctions/:id` where :id is the ID of her auction, and the bids array in the response will contain all of the bid records for that auction. In this case, we just confirm that there are five bid records in the array, representing the automatic starting bid of 0 made by the original item submitter, and the four bids we made in test_TC10.
 
-![Screenshot of a successful pytest run](./pytest-run-successful.png)
+![Screenshot of a successful pytest run](./images/pytest-run-successful.png)
 
 The above screenshot shows a successful pytest run of the described test cases, in the command line. I used two console sessions, one to set up the docker environment and monitor activity, the other to run the test suite. I could have run both in the same console session by using the `-d` flag on docker-compose to detach docker execution from the shell process, but it's useful to keep the output visible. In this particular test run, I used the `-ra` and `-vv` flags on pytest to produce more verbose output for passing tests, as the standard output for all tests passing is less useful in a screenshot. One other thing the screenshot doesn't show is the pause of about a minute during execution of test_TC11, while the test waits for the auction-closer to trigger and mark Mary's auction as closed.
 
