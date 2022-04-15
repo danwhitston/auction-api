@@ -344,6 +344,18 @@ An example response might be:
 
 ## Architecture decisions, rationales, and potential improvements
 
+### Virtualised services and containerisation
+
+The project brief required that the services would deploy and run in a virtualised environment, on the development machine. This makes it easier to deploy to production, as the resulting code does not rely on hidden state in the local environment and is packaged for deployment anywhere that's needed.
+
+In the implementation of the brief, I've used a docker-compose configuration that deploys an auction API, an auction-closer cron job that closes auctions when they reach their closing date, and a MongoDB service to store data. This meets the requirements of the brief, and means that anyone with docker and docker-compose installed on their machine can install, makes changes to, and run the software with high confidence that its behaviour will match that of all other deployments running the same code. I've also stored the full set of code (and this documentation) in a single git repository to make sharing and synchronising code easier, and to provide a base for CI/CD setup if required.
+
+I have left one aspect of the project outside of docker, as the project brief required that it be developed outside of the virtual machine. The Python testing application is designed to be run locally, and interacts with the dockerised services through a localhost endpoint to provide assurance that the services are actually accessible by the outside world and that their behaviour matches expectations when interacted with using actual API requests. I did consider automating the docker setup and teardown such that tests could be run with a single command, but the fragility and obscurity of the solution outweighed the reduction in complexity for developers.
+
+It's worth noting that, although the docker setup is ready for containerised development, most modern IaaS providers operate their own dedicated services that are preferable to deploying on docker containers. With Google Cloud Platform, instead of three docker containers we would use managed MongoDB Atlas, managed application hosting such as App Engine, and Cloud Scheduler triggering Cloud Functions instead of a dockerised cron job. These services all operate in a distributed fashion, so they behave differently and require awareness of issues that can occur more frequently in distributed systems.
+
+The different infrastructure for production means that there would still be further work to ready the project for actual production-quality deployment. Some cloud services can be mimicked locally using e.g. the AWS SDK, but if those were used we would still want to use them within containers, to properly isolate and manage their configuration. It would also be much simpler to extend a containerised setup than a purely local one, given that we have a guarantee that the infrastructure and underlying state are fully encapsulated in the docker configuration. I've written a list of tasks that would improve production readiness, and included them at the end of the architecture section.
+
 ### Data structures
 
 To meet the specification, the API application uses four models, which are stored in MongoDB as three collections plus a subdocument array, as follows.
@@ -468,8 +480,7 @@ There are advantages and disadvantages to this approach:
 - External testing does not support unit testing, making test-driven development more difficult
 - Tests are fragile to disruption by environmental factors. If anything goes wrong in the docker instances, for example the database isn't cleared before testing or the docker cron setup stops working for some reason, then all of the testing will fall over until the issue is fixed
 - External testing removes control over the internal conditions of the application environment. Most obviously, this hampers testing around behaviour of auction closing times. The test_TC11 test case shows one way of working around this particular issue, but there are others, e.g. testing whether overlapping bid-saves could lead to an incorrect winnerId being set
-
-A deeper issue with testing in docker is that assurance of application behaviour in a containerised local environment does not guarantee the same behaviour in a production environment. We would normally use dedicated cloud services instead of docker containers. With Google Cloud Platform, instead of three docker containers we would be using managed MongoDB Atlas, managed application hosting such as App Engine, and Cloud Scheduler triggering Cloud Functions instead of a dockerised cron job. These services all operate in a distributed fashion, so they behave differently and require awareness of issues that can occur more frequently in distributed systems.
+- As discussed in the section on virtual services and containerised development, actual production deployment should ideally make use of dedicated, managed cloud services instead of directly deployed docker containers. The changes in behaviour that result from this mean that assurance of application behaviour in a containerised local environment does not guarantee the same behaviour in a production environment
 
 The User class in that file provides demonstration code for interacting with the API in Python. Each user of the API is represented by a separate instance of the User class, and the user instance automatically retrieves and stores key information about the user from the API's responses to requests. Thus, if we want to create a user called Olga, have her log in to get an auth token, then post an item for sale with a closing date 1 day from now, we could use the following:
 
