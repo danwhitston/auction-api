@@ -1,6 +1,6 @@
 # auction-api
 
-Cloud-based Auction API, written in NodeJS with CI/CD to Google Cloud.
+Cloud-based Auction API, written in NodeJS with cron-based auction closer and MongoDB data storage, all served as via docker-compose. Also a non-cloud Python API testing script that queries the API via its public interface.
 
 ## Academic Declaration
 
