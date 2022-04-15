@@ -87,26 +87,26 @@ The API sends one of three response statuses:
 Full details of each API call are provided later on. However, as an introduction to interacting with the API, you may wish to try the following exercise. The included screenshots were taken in Postman. The requests were made against an API after first generating some dummy records by running the Python testing app, to give some more content to play with:
 
 - First, set up a development environment as described previously
-- Check the API is online by navigating to the root. You can even do this in a web browser. The default address is <http://localhost:3000/>
+- Check the API is online by navigating to the root. You can even do this in a web browser. The default address is <http://localhost:3000/>  
   ![Screenshot of browser showing server status](./images/tour-00-check-server-status.png)
-- Then, create a new user by making a POST request to `/users/register` (i.e. <http://localhost:3000/users/register>) using a request tool such as Postman
+- Then, create a new user by making a POST request to `/users/register` (i.e. <http://localhost:3000/users/register>) using a request tool such as Postman  
   ![Screenshot of request to register a new user](./images/tour-01-register-user.png)
-- Generate an auth-token to prove you're the user by making a POST request to `/users/login`, and copying the auth-token you get in response. You'll need to include that auth-token as a header in all the requests you make below
+- Generate an auth-token to prove you're the user by making a POST request to `/users/login`, and copying the auth-token you get in response. You'll need to include that auth-token as a header in all the requests you make below  
   ![Screenshot of request to log in as the new user](./images/tour-02-login-user.png)
-- Now, put an item up for auction by making a POST request to `/items`. This creates both an item record with the details of what the item is, its description etc. It also creates an auction record which is used to track the progress of the auction, to store bids, and to determine the eventual winner of the auction
+- Now, put an item up for auction by making a POST request to `/items`. This creates both an item record with the details of what the item is, its description etc. It also creates an auction record which is used to track the progress of the auction, to store bids, and to determine the eventual winner of the auction  
   ![Screenshot of request to post a new item for auction](./images/tour-03-post-item.png)
-- Want to see the item you just posted? You can browse item details with a GET request to `/items`, or make a GET request to `/auctions` to see how the auction is progressing for each item that's been posted. If you're looking for only open or only completed auctions, add a parameter of the form `?status=open|completed` to the auctions URL
+- Want to see the item you just posted? You can browse item details with a GET request to `/items`, or make a GET request to `/auctions` to see how the auction is progressing for each item that's been posted. If you're looking for only open or only completed auctions, add a parameter of the form `?status=open|completed` to the auctions URL  
   ![Screenshot of request to show all items, with the response body cut off due to length](./images/tour-04-get-items.png)
-- Each auction response includes a list of all bids to date in an array called bids
+- Each auction response includes a list of all bids to date in an array called bids  
   ![Screenshot of request to show all open auctions, with the response body cut off due to length](./images/tour-05-get-open-auctions.png)
-- Because records cross-reference each other, you can use the itemId in an auction record to look up the matching item details, or the auctionId in an item record to look up the matching auction, using a GET request to `/items/:id` or `/auctions/:id`
+- Because records cross-reference each other, you can use the itemId in an auction record to look up the matching item details, or the auctionId in an item record to look up the matching auction, using a GET request to `/items/:id` or `/auctions/:id`  
   ![Screenshot of request to show a single auction using the auction ID](./images/tour-06-get-auction-by-id.png)
 - There's a problem with all of this. If you're running on your local machine, you're probably the only 'user', and you can't bid on your own auctions. To try out the bidding functionality, you'll need to make register and login requests for multiple different users, with unique usernames and email addresses. This will give you a different `auth-token` value for each user, and you can pretend to be different users by using their auth-token values in the requests that you make
-- The purpose of the auction system is to allow users to bid on each other's items. So, once you've found an item you like, submit a bid by making a POST request to `/auctions/:id/bids`. If you're bidding on an item that you posted, your request will fail.
-  ![Screenshot of request to bid on own item](./images/tour-07-post-bid-for-own-item.png)
-  It will also fail if the auction's closingTime has passed and the auction status is closed. If your bid is successful, the response will give full details of the auction, including all bids to date and the current highest bidder's userId and amount. If you submitted the highest bid, this will be you
+- The purpose of the auction system is to allow users to bid on each other's items. So, once you've found an item you like, submit a bid by making a POST request to `/auctions/:id/bids`. If you're bidding on an item that you posted, your request will fail.  
+  ![Screenshot of request to bid on own item](./images/tour-07-post-bid-for-own-item.png)  
+  It will also fail if the auction's closingTime has passed and the auction status is closed. If your bid is successful, the response will give full details of the auction, including all bids to date and the current highest bidder's userId and amount. If you submitted the highest bid, this will be you  
   ![Screenshot of request to bid on someone else's item, as the highest bidder](./images/tour-08-post-bid-for-other-item.png)
-- Once the auction is finished, the auctionStatus will be marked as completed, and the winner's userId and bid amount will be stored in the main auction record. The bids array in the auction record will include a record of all bids submitted
+- Once the auction is finished, the auctionStatus will be marked as completed, and the winner's userId and bid amount will be stored in the main auction record. The bids array in the auction record will include a record of all bids submitted  
   ![Screenshot of request to show an auction that's ended and had multiple bids](./images/tour-09-show-completed-auction-by-id.png)
 
 The above tour covers all of the API's functionality. The auction-closer application doesn't support user interaction, and can be seen in action when it changes the auction status to closed once the closingTime has been reached. Instructions for running the API test cases can be found in the 'Running tests' section, and the Python code provides a model for how to interact with the API programmatically. In addition, the following API documentation gives routes, parameters and responses for every implemented API action.
@@ -614,7 +614,9 @@ The application does not have a configuration for production deployment, i.e. de
 
 ## References
 
-Where I have based code on examples sourced from the internet, I have acknowledged this in comments above the code, with the original URL included. Where code follows a standard 'boilerplate' structure without room for deviation or creativity, this is not acknowledged, as it is common to all code that makes use of the platforms in question. The overall structure of the Express app is based on example code by Stelios Sotiriadis from his lab tutorials.
+In general, system design decisions are based on previous, personal experience of good practice and design pitfalls. External sources of design logic are provided by the project brief and by example program code and blog posts sourced online.
+
+Where program code is substantively based on examples sourced from the internet, I acknowledge this in comments above the code, with the original URL included. Where code follows a standard 'boilerplate' structure without room for deviation or creativity, this is not acknowledged, as it is common to all code that makes use of the platforms in question. The overall structure of the Express app is based on example code by Stelios Sotiriadis from his lab tutorials.
 
 <api-app/middleware/validateBody.js> and <api-app/middleware/validateQuery.js> and structure of validation functions in <api-app/models/user.js> based on `Joi validation in a Mongoose model`, available online at <https://gist.github.com/stongo/6359042?permalink_comment_id=3476052#gistcomment-3476052>. Last accessed 31/3/2022.
 
