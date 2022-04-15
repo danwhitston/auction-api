@@ -1,4 +1,5 @@
 
+// Based on Sotiriadis (2022d)
 const jsonwebtoken = require('jsonwebtoken')
 
 module.exports = () => {

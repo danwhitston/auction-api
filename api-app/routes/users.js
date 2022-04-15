@@ -1,3 +1,4 @@
+// Code structure based on Sotiriadis (2022b)
 const {
   User,
   validateUserWrite,

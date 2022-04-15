@@ -1,6 +1,6 @@
 # auction-api
 
-Cloud-based Auction API, written in NodeJS with cron-based auction closer and MongoDB data storage, all served as via docker-compose. Also a non-cloud Python API testing script that queries the API via its public interface.
+Cloud-based Auction API, written in Node.js with cron-based auction closer and MongoDB data storage, all served as via docker-compose. Also a non-cloud Python API testing script that queries the API via its public interface.
 
 ## Academic Declaration
 
@@ -10,8 +10,8 @@ I have read and understood the sections of plagiarism in the College Policy on a
 
 There are three applications, in three folders of the git repository:
 
-- `api-app` - the Node API
-- `auction-closer` - a Node script to close auctions, on a once-a-minute cron
+- `api-app` - the Node.js API
+- `auction-closer` - a Node.js script to close auctions, on a once-a-minute cron
 - `api-test-app` - Python test script, confirms correct working of api-app and auction-closer
 
 The API, the auction closer script, and the underlying MongoDB storage have a docker-compose config for local development and hosting. The API test app makes requests against this, and requires a clean MongoDB database.
@@ -361,6 +361,8 @@ The project brief required that the services would deploy and run in a virtualis
 
 In the implementation of the brief, I've used a docker-compose configuration that deploys an auction API, an auction-closer cron job that closes auctions when they reach their closing date, and a MongoDB service to store data. This meets the requirements of the brief, and means that anyone with docker and docker-compose installed on their machine can install, makes changes to, and run the software with high confidence that its behaviour will match that of all other deployments running the same code. I've also stored the full set of code (and this documentation) in a single git repository to make sharing and synchronising code easier, and to provide a base for CI/CD setup if required.
 
+I couldn't get nodemon working within a docker container, despite apparently-working examples, so I stripped it out for now. Testing changes requires a manual rebuild each time. A longer-term answer would involve linking folders inside the container to folders in the local filesystem.
+
 I have left one aspect of the project outside of docker, as the project brief required that it be developed outside of the virtual machine. The Python testing application is designed to be run locally, and interacts with the dockerised services through a localhost endpoint to provide assurance that the services are actually accessible by the outside world and that their behaviour matches expectations when interacted with using actual API requests. I did consider automating the docker setup and teardown such that tests could be run with a single command, but the fragility and obscurity of the solution outweighed the reduction in complexity for developers.
 
 It's worth noting that, although the docker setup is ready for containerised development, the main IaaS providers operate their own dedicated services that are preferable to deploying on docker containers. With Google Cloud Platform, instead of three docker containers we would use managed MongoDB Atlas, managed application hosting such as App Engine, and Cloud Scheduler triggering Cloud Functions instead of a dockerised cron job. These services all operate in a distributed fashion, so they behave differently and require awareness of issues that can occur more frequently in distributed systems.
@@ -373,16 +375,26 @@ To meet the specification, the API application uses four models, which are store
 
 ![Diagram of models and relations](./images/Auction%20API%20data%20structure.svg)
 
+I chose to use references between items and auctions, rather than embedding one inside the other. There was no performance benefit to denormalising at this level of usage, and there was a stated requirement to create both auctions and items. However, I am embedding bids as an array inside each auction, as those aren't specified as a distinct requirement.
+
+I'm using the MongoDB internal ID as the public ID of documents, which makes it possible for the API to accept and serve direct document IDs without an an intervening translation layer. Ideally, we would use a separate public-facing ID for external consumption, but that's very much a future task.
+
+The models include Joi validation middleware and Mongoose schemas to define the field names, content types, and acceptable values. Values are automatically converted to a more correct form where appropriate, e.g. lowercasing of all email addresses to ensure uniqueness. The use of two validation stages provides defense in depth, and enables use of functionality that is not present in either stage by itself. The Joi validation functions use a middleware structure based on Stong and devChedar (2020).
+
+Some fields in Auction and Bid records are marked as immutable, in the api-app schemas and Joi validators. This is a safety measure to reduce the possibility of auctions or bids getting modified after-the-fact, which would invalidate auction results and damage trust. In a production setup, we would set up a custom MongoDB user with limited permissions on collections, to enforce these restrictions at an even deeper level.
+
 #### User
 
 Each registered user has their details stored in a single document defined by the User model, consisting of:
 
 - **username** - a mandatory, unique string between 3 and 256 letters long
-- **email** - a mandatory, unique string between 3 and 256 characters long, stored as lower case for ease of referening and to reduce risk of duplicate email addresses
-- **password** - a mandatory string between 8 and 1024 characters long. Created passwords are hashed with a salt prior to saving using a pre-save hook, so they cannot be easily decrypted if user data is compromised
+- **email** - a mandatory, unique string between 3 and 256 characters long, stored as lower case for ease of referencing and to reduce risk of duplicate email addresses. 3 is the smallest possible email address length
+- **password** - a mandatory string between 8 and 1024 characters long. Created passwords are hashed with a salt prior to saving using a pre-save hook, so they cannot be easily decrypted if user data is compromised. 8 digits is the minimum safe password length, and is still less than the 10 character minimum recommended by NCSC
 - **createdAt** - the date and time a document was created, i.e. when the user was registered
 
 Documents stored by the User model are stored in the MongoDB users collection. As with all collections, there's also a unique _id field that can be used to reference the user elsewhere in the database.
+
+The underlying code for the `users` route that handles requests to register and log in users is based on Sotiriadis (2022b).
 
 #### Item
 
@@ -424,11 +436,11 @@ Each bid posted by a user is stored as a single document, as part of an array of
 
 Bids are defined in the model as entirely immutable once successfully created. There are no REST actions other than posting, and as with other records the createdAt is determined internally based on the current system time. Further, bid submission checks both the auction status and the closing time, and fails if either is invalid, just in case there's an inconsistency caused by e.g. the auction-closer not yet triggering. This is important, as trustworthiness of bid information and correctness of the auction winner is critical to successful operation of the platform. This is also why there is no way for a user to set the value of a createdAt field as part of any requests.
 
-One option for further development would be to offer withdrawl of a bid, provided an auction was still open. This would need to preserve immutability of the original request details for security and transparency reasons, so could be achieved by e.g. an extra field called withdrawnAt that updated the first time a deletion request was received for a bid, from the bidder concerned.
+One option for further development would be to offer withdrawal of a bid, provided an auction was still open. This would need to preserve immutability of the original request details for security and transparency reasons, so could be achieved by e.g. an extra field called withdrawnAt that updated the first time a deletion request was received for a bid, from the bidder concerned.
 
 ### Authorisation, and use of auth tokens
 
-User authentication and authorisation follows the method implemented in lab sessions of the Cloud Computing module[TODO: add cite link]. Most types of request to the API must include a valid `auth-token` header. The header content is initially generated by the API upon receipt of a valid `/users/login` request from a user, and returned in the response body.
+User authentication and authorisation follows the method implemented in lab sessions of the Cloud Computing module (Sotiriadis, 2022b; 2022d), with additional salt and hash code based on MongoDB (2019). Most types of request to the API must include a valid `auth-token` header. The header content is initially generated by the API upon receipt of a valid `/users/login` request from a user, and returned in the response body.
 
 The user includes the auth-token content in the header of future requests that require auth, i.e. any requests to routes other than `/`, `/users/register`, and `/users/login`. The token is a JSON web token (JWT), which contains the Mongo document ID of the user and a cryptographic signature. When the API receives a request, it verifies the signature against the JWT content and the `TOKEN_SECRET` private key, and sets `req.user._id` in the Express request object to the verified user ID value. This is provided using middleware which runs for each auth-secured API request before the rest of the route is actioned. If the token is missing, or the signature does not decrypt successfully, then the middleware prevents further execution and returns a 401 not authorised response.
 
@@ -477,7 +489,7 @@ Triggering auction update actions when auction items are accessed by users has t
 
 Using virtual fields is unwise in a real world scenario. Frankly, any storage of contractual information with substantial consequences for users should be backed by trustworthy, queryable journaling of transactions.
 
-To support this, I've implemented a separate scheduled task to mark auctions as closed, which runs once a minute in a separate docker container using cron. Currently, winning bid and winning amount are still saved by the bid POST action each time a bid is submitted. This could run into issues with sufficient bid frequency and volume as there's potential for overlap between parallel processes resulting in an incorrect winning bid being saved over the top of the correct one. I haven't implemented a solution for this, but have discussed it in the notes for potential future development.
+To support this, I've implemented a separate scheduled task to mark auctions as closed, which runs once a minute in a separate docker container using cron (Kulatunga, 2021). Currently, winning bid and winning amount are still saved by the bid POST action each time a bid is submitted. This could run into issues with sufficient bid frequency and volume as there's potential for overlap between parallel processes resulting in an incorrect winning bid being saved over the top of the correct one. I haven't implemented a solution for this, but have discussed it in the notes for potential future development.
 
 ### Test approach and test cases
 
@@ -534,32 +546,6 @@ The individual cases, with descriptions taken directly from the project brief, a
 
 The above screenshot shows a successful pytest run of the described test cases, in the command line. I used two console sessions, one to set up the docker environment and monitor activity, the other to run the test suite. I could have run both in the same console session by using the `-d` flag on docker-compose to detach docker execution from the shell process, but it's useful to keep the output visible. In this particular test run, I used the `-ra` and `-vv` flags on pytest to produce more verbose output for passing tests, as the standard output for all tests passing is less useful in a screenshot. One other thing the screenshot doesn't show is the pause of about a minute during execution of test_TC11, while the test waits for the auction-closer to trigger and mark Mary's auction as closed.
 
-### General notes
-
-Because we're using MongoDB via docker-compose for local running, we don't need auth. This does not obviate the need for auth in cloud environments, but we can solve that later. I've also kept in the JWT secret token as a `.env` setting for now, but have excluded the `.env` file from the git repo.
-
-The specification requires both `auctions` and `items` to be stored and made available. Given that each auction has one and only one item associated, and that there's no `bids` object, it appears that the purpose of the auctions collection is to store the complete auction history for a posted item in a single document.
-
-I couldn't get nodemon working within a Docker container, despite apparently-working examples, so I stripped it out for now. Testing changes requires a manual rebuild each time. I suspect a good longer-term answer involved linking folders inside the container to folders in the local filesystem.
-
-Minimum email length is set to 3 as that's achievable from within an intranet. I've also enforced uniqueness and lowercase characters on email addresses in the model, as both are required to prevent duplicates.
-
-Minimum password length is set to 8 digits. This is still less than the recommended 10 characters.
-
-I have *not* used controllers, and instead kept code inside the routes. This was in keeping with the approach in the labs tutorials. I've also mixed and matched model usage across all routes where necessary. Ideally I should fix by extracting all code related to a model to its model or controller counterpart.
-
-I've moved Joi validation code inside the model and created middleware that validates request content prior to running the controller code (which is still inside the individual route files for simplicity). This was based on an example found on the internet.
-
-I've also moved some domain logic inside the model with a pre-save hook, to tie password hashing directly into the model and make it harder to mess up security. Same with update of current winning bidder for each auction on a post-save hook to the Bid model.
-
-I chose to use references between items and auctions, rather than embedding one inside the other. There was no performance benefit to denormalising at this level of usage, and there was a stated requirement to create both auctions and items. However, I am embedding bids as an array inside each auction, as those aren't specified as a distinct requirement.
-
-Items and Auctions have their respective references to each other as required fields. This means that every item should have an auction and vice versa. There is no enforcement of reference consistency between the two collections, so it's theoretically possible to create inconsistent documents that don't reference each other, many-to-one or one-to-many connections, or documents that reference a document of completely the wrong type. To limit the potential for mischief, these references are calculated by the program, and cannot be defined by end users.
-
-I'm using the MongoDB internal ID as the public ID of documents. Ideally, we would use a public-facing ID for external consumption, but it's not a major issue either way.
-
-I've marked some fields in Auction and Bid records as immutable, in the api-app. This is a safety measure to reduce the possibility of auctions or bids getting modified after-the-fact, which would invalidate auction results and damage trust. In a production setup, I would set up a custom MongoDB user with limited permissions on collections, such that it was impossible for the API app to remove or modify bid documents, that changes to item information did not overwrite previous edits, and that auctions could not be removed but instead only marked as cancelled.
-
 ### Completed tasks
 
 The following tasks have already been completed:
@@ -612,22 +598,26 @@ The application does not have a configuration for production deployment, i.e. de
 - [ ] Consider using an SQL database for storage, either replacing or in addition to MongoDB. It's not clear that the advantages of NoSQL are suited to this particular application
 - [ ] Add an emailing service triggered by the auction-closer, to email auction bidders when an auction closes and let them know whether they won, and to email the item owner and let them know the sale price
 
-## References
+## References and Credits
 
-In general, system design decisions are based on previous, personal experience of good practice and design pitfalls. External sources of design logic are provided by the project brief and by example program code and blog posts sourced online.
+In general, system design decisions are based on previous, personal experience of good practice and design pitfalls, with reasoning laid out in this project report and / or in comments to the code. External sources of design logic included the project brief and example program code and blog posts sourced online.
 
-Where program code is substantively based on examples sourced from the internet, I acknowledge this in comments above the code, with the original URL included. Where code follows a standard 'boilerplate' structure without room for deviation or creativity, this is not acknowledged, as it is common to all code that makes use of the platforms in question. The overall structure of the Express app is based on example code by Stelios Sotiriadis from his lab tutorials.
+Where program code or algorithms are substantively based on examples sourced from elsewhere, I acknowledge this in comments above the code and in the citations section below. Where code follows a standard 'boilerplate' structure without room for deviation or creativity, this is not acknowledged, as it is common to all code that makes use of the platforms in question. The overall structure of the Node.js `api-app` application, in particular the root application file `server.js`, is based on example code by Sotiriadis (2022a) from his lab tutorials, which in turn follows a standard pattern for Express API applications.
 
-<api-app/middleware/validateBody.js> and <api-app/middleware/validateQuery.js> and structure of validation functions in <api-app/models/user.js> based on `Joi validation in a Mongoose model`, available online at <https://gist.github.com/stongo/6359042?permalink_comment_id=3476052#gistcomment-3476052>. Last accessed 31/3/2022.
+### Bibliography
 
-<api-app/middleware/authorise.js> based on 'Class 4' by Stelios Sotiriadis, available online at <https://github.com/steliosot/cc/blob/master/Class-4/mini-film-auth/validations/validation.js>. Last accessed 31/3/2022.
+Kulatunga, J., 2021. Sparktree - Running Cron in Docker. [online] Sparktree. Available at: <https://blog.thesparktree.com/cron-in-docker> [Accessed 15 April 2022].
 
-<api-app/models/user.js> user pre-save salting and hashing based on 'Password Authentication with Mongoose Part 1' by MongoDB, available online at <https://www.mongodb.com/blog/post/password-authentication-with-mongoose-part-1>. Last accessed 31/3/2022.
+MongoDB, 2019. Password Authentication with Mongoose Part 1 | MongoDB Blog. [online] MongoDB. Available at: <https://www.mongodb.com/blog/post/password-authentication-with-mongoose-part-1> [Accessed 15 April 2022].
 
-<api-app/routes/users.js> basic code structure based on 'Class 4' by Stelios Sotiriadis, available online at <https://github.com/steliosot/cc/blob/master/Class-4/mini-film-auth/routes/auth.js>. Last accessed 31/3/2022.
+OpenJS Foundation, n.d. Dockerizing a Node.js web app | Node.js. [online] Node.js. Available at: <https://nodejs.org/en/docs/guides/nodejs-docker-webapp/> [Accessed 15 April 2022].
 
-<api-app/server.js> basic code structure based on 'Class 4' by Stelios Sotiriadis, available online at <https://github.com/steliosot/cc/blob/master/Class-4/mini-film-auth/app.js>. Last accessed 31/3/2022.
+Sotiriadis, S., 2022a. cc/app.js at master · steliosot/cc. [online] GitHub. Available at: <https://github.com/steliosot/cc/blob/master/Class-4/mini-film-auth/app.js> [Accessed 15 April 2022].
 
-<api-app/Dockerfile> and <auction-closer/Dockerfile> based on 'Dockerizing a Node.js web app' by OpenJS Foundation, available online at <https://nodejs.org/en/docs/guides/nodejs-docker-webapp/>. Last accessed 31/3/2022.
+Sotiriadis, S., 2022b. cc/auth.js at master · steliosot/cc. [online] GitHub. Available at: <https://github.com/steliosot/cc/blob/master/Class-4/mini-film-auth/routes/auth.js> [Accessed 15 April 2022].
 
-<auction-closer/Dockerfile> and <auction-closer/crontab> and <auction-closer/entrypoint.sh> based on 'Running Cron in Docker' by Jason Kulatunga, available online at <https://blog.thesparktree.com/cron-in-docker>. Last accessed 31/3/2022.
+Sotiriadis, S., 2022c. cc/validation.js at master · steliosot/cc. [online] GitHub. Available at: <https://github.com/steliosot/cc/blob/master/Class-4/mini-film-auth/validations/validation.js> [Accessed 15 April 2022].
+
+Sotiriadis, S., 2022d. cc/verifyToken.js at master · steliosot/cc. [online] GitHub. Available at: <https://github.com/steliosot/cc/blob/master/Class-4/mini-film-auth/verifyToken.js> [Accessed 15 April 2022].
+
+Stong, M. and devChedar, 2020. Joi validation in a Mongoose model. [online] Gist. Available at: <https://gist.github.com/stongo/6359042?permalink_comment_id=3476052#gistcomment-3476052> [Accessed 15 April 2022].

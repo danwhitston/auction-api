@@ -1,4 +1,5 @@
 #!/bin/bash
+# Based on Kulatunga (2021)
 
 env >> /etc/environment
 

@@ -1,4 +1,4 @@
-# Based on https://nodejs.org/en/docs/guides/nodejs-docker-webapp/
+# Based on OpenJS Foundation (n.d.)
 
 FROM node:17
 

@@ -33,10 +33,9 @@ const userSchema = mongoose.Schema({
 
 // We deliberately keep logic and validation inside the model where we want to
 // enforce it on all code that accesses the model
-
 // Pre-save hook is used for processes that must be carried out on valid
 // inputs prior to saving, i.e. hashing and salting the password
-// Based on: https://www.mongodb.com/blog/post/password-authentication-with-mongoose-part-1
+// Pre-save hook for salting and hashing is based on MongoDB (2019)
 userSchema.pre("save", function (next) {
   const user = this;
 
@@ -59,7 +58,7 @@ userSchema.pre("save", function (next) {
 
 // Validation function uses Joi to assess validity of data prior to attempting
 // commit, e.g. saving of a document
-// Based on https://gist.github.com/stongo/6359042?permalink_comment_id=3476052#gistcomment-3476052
+// Validation function structure based on Stong and devChedar (2020)
 // Confirmed: the string requirement on these prevents query injection attacks!
 const validateUserWrite = (user) => {
   const schema = Joi.object({

@@ -1,3 +1,4 @@
+# Based on Kulatunga (2021)
 SHELL=/bin/bash
 BASH_ENV=/etc/environment
 
