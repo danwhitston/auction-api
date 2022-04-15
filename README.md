@@ -493,7 +493,7 @@ To support this, I've implemented a separate scheduled task to mark auctions as 
 
 ### Test approach and test cases
 
-The project brief required that a test suite be written separately using Python, using http requests to test numerous aspects of the API's behaviour. This has been implemented in the api-test-app folder, as a set of pytest tests in <api-test-app/test_api.py>.
+The project brief required that a test suite be written separately using Python, using http requests to test numerous aspects of the API's behaviour. This has been implemented in the api-test-app folder, as a set of pytest tests in `api-test-app/test_api.py`.
 
 There are advantages and disadvantages to this approach:
 
